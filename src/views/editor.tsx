@@ -1,7 +1,7 @@
 'use client'
 
 import type { DefaultNodeTypes, DefaultTypedEditorState } from '@payloadcms/richtext-lexical'
-import type { User } from 'payload'
+import type { Note, User } from '@/payload-types'
 
 import { buildEditorState, RenderLexical } from '@payloadcms/richtext-lexical/client'
 import { DocumentInfoProvider } from '@payloadcms/ui'
@@ -9,13 +9,13 @@ import { useState } from 'react'
 
 type Props = {
     id: number | string
-    note?: DefaultTypedEditorState | null
+    note?: Note['note']
     user: User
 }
 
-const NoteEditor: React.FC<{ note?: DefaultTypedEditorState | null }> = ({ note }) => {
+const NoteEditor: React.FC<{ note?: Note['note'] }> = ({ note }) => {
     const [initialValue] = useState<DefaultTypedEditorState>(() => {
-        return note ?? buildEditorState<DefaultNodeTypes>({ text: '' })
+        return (note as DefaultTypedEditorState | null | undefined) ?? buildEditorState<DefaultNodeTypes>({ text: '' })
     })
     const [value, setValue] = useState<DefaultTypedEditorState | undefined>(initialValue)
 

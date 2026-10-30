@@ -69,3 +69,55 @@ That's it! The Docker instance will help you get up and running quickly while al
 
 If you have any issues or questions, reach out to us on [Discord](https://discord.com/invite/payload) or start a [GitHub discussion](https://github.com/payloadcms/payload/discussions).
 # ink
+
+## Deployment (Cloudflare Workers + D1 + R2)
+
+Production runs on a Cloudflare Worker, with **D1** as the database and **R2** for media.
+Local development (`pnpm dev`) has no link to Cloudflare at all: it uses a local SQLite file
+(`DATABASE_URL` in `.env`) and stores uploads in `./media`.
+
+| | Local (`pnpm dev`) | Cloudflare Worker |
+| --- | --- | --- |
+| Database | `@payloadcms/db-sqlite` (`DATABASE_URL`) | `@payloadcms/db-d1-sqlite` (binding `D1`) |
+| Media | `./media` folder | `@payloadcms/storage-r2` (binding `R2`) |
+| Env | `.env` / `process.env` | GitHub secrets → Worker secrets |
+
+How the switch works:
+
+- `vite.config.ts` only adds `@cloudflare/vite-plugin` when `CLOUDFLARE_BUILD=true` (set by CI).
+- `src/lib/runtime/cloudflare-env.ts` returns no bindings in Node.js, so `payload.config.ts` uses
+  SQLite + local disk. In the Worker build it is swapped for `cloudflare-env.worker.ts`, which reads
+  `D1` and `R2` from `cloudflare:workers`.
+- `src/lib/patch-pbkdf2.ts` clamps PBKDF2 iterations to 100,000 (the Workers limit).
+- `scripts/prepare-cloudflare.mjs` (CI only) removes the local-only `pnpm.overrides.esbuild` from
+  `package.json` and fills the placeholders in `wrangler.jsonc`.
+
+### CI/CD (`.github/workflows/deploy.yml`)
+
+- **Push to `main`** → build → run Payload migrations on D1 → `wrangler deploy` (production).
+- **Pull request to `main`** → build → `wrangler versions upload --preview-alias pr-<number>`
+  ([preview URL](https://developers.cloudflare.com/workers/previews/)), posted as a PR comment.
+  Previews share the production D1 database and R2 bucket and **never run migrations**.
+
+### One-time setup
+
+1. Cloudflare account on the **Workers Paid** plan (the Worker bundle is ~4 MB gzipped, above the
+   3 MB free-plan limit).
+2. D1 database `ink` and R2 bucket `ink` (already created, configured in `wrangler.jsonc`).
+3. Cloudflare API token (My Profile → API Tokens → Create Token → Custom token) with:
+   Account → **Workers Scripts: Edit**, **D1: Edit**, **Workers R2 Storage: Edit**;
+   Zone `devslix.com` → **Workers Routes: Edit**, **DNS: Edit**, **Zone: Read**.
+4. GitHub → Settings → Secrets and variables → Actions → Secrets:
+   `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `PAYLOAD_SECRET`.
+5. Push to `main`. The Worker is deployed and attached to **https://ink.devslix.com**. The first production deploy has to happen before PR previews can be uploaded.
+
+### Changing the schema
+
+Locally Payload pushes schema changes to SQLite automatically. D1 only changes through migrations,
+so after changing collections, globals or fields run:
+
+```bash
+pnpm payload migrate:create <name>
+```
+
+and commit the new files in `src/migrations`. The next push to `main` applies them to D1.

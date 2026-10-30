@@ -6,6 +6,8 @@
   "type": "module",
   "scripts": {
     "build": "cross-env NODE_OPTIONS=\"--no-deprecation --max-old-space-size=8000\" payload build",
+    "build:cloudflare": "cross-env CLOUDFLARE_BUILD=true pnpm run build",
+    "deploy:migrate": "cross-env CLOUDFLARE_REMOTE_BINDINGS=true NODE_ENV=production NODE_OPTIONS=--no-deprecation payload migrate",
     "dev": "cross-env NODE_OPTIONS=--no-deprecation vite dev",
     "devsafe": "rm -rf dist && cross-env NODE_OPTIONS=--no-deprecation vite dev",
     "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
@@ -15,12 +17,16 @@
     "start": "cross-env NODE_OPTIONS=--no-deprecation srvx --prod --dir=. --static=dist/client --entry=dist/server/server.js",
     "test": "pnpm run test:int && pnpm run test:e2e",
     "test:e2e": "cross-env NODE_OPTIONS=\"--no-deprecation --import=tsx/esm\" playwright test --config=playwright.config.ts",
-    "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts"
+    "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@payloadcms/db-d1-sqlite": "4.0.0-beta.6",
+    "@payloadcms/db-sqlite": "4.0.0-beta.6",
     "@payloadcms/graphql": "4.0.0-beta.6",
     "@payloadcms/plugin-mcp": "4.0.0-beta.6",
     "@payloadcms/richtext-lexical": "4.0.0-beta.6",
+    "@payloadcms/storage-r2": "4.0.0-beta.6",
     "@payloadcms/tanstack-start": "4.0.0-beta.6",
     "@payloadcms/ui": "4.0.0-beta.6",
     "@tanstack/react-router": "^1.170.44",
@@ -32,10 +38,10 @@
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "srvx": "0.11.21",
-    "vite": "8.3.0",
-    "@payloadcms/db-sqlite": "4.0.0-beta.6"
+    "vite": "8.3.0"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.66.0",
     "@eslint/js": "9.39.2",
     "@playwright/test": "1.63.0",
     "@testing-library/react": "16.3.0",
@@ -51,7 +57,8 @@
     "typescript": "6.0.3",
     "typescript-eslint": "8.26.1",
     "vite-tsconfig-paths": "6.0.5",
-    "vitest": "5.0.1"
+    "vitest": "5.0.1",
+    "wrangler": "^4.156.0"
   },
   "engines": {
     "node": ">=24.22.1",
@@ -63,7 +70,8 @@
     },
     "onlyBuiltDependencies": [
       "esbuild",
-      "unrs-resolver"
+      "unrs-resolver",
+      "workerd"
     ]
   }
 }
