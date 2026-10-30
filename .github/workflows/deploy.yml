@@ -1,0 +1,143 @@
+# CI/CD: build Payload + TanStack Start for Cloudflare Workers (D1 + R2).
+#
+# - push to `main`          -> run D1 migrations, then deploy to production
+# - pull request to `main`  -> upload a preview version (https://developers.cloudflare.com/workers/previews/)
+#                              Previews use the SAME D1 database and R2 bucket as production and
+#                              never run migrations.
+#
+# Required GitHub secrets (Settings -> Secrets and variables -> Actions -> Secrets):
+#   CLOUDFLARE_API_TOKEN    API token with Workers Scripts:Edit, D1:Edit, Workers R2 Storage:Edit
+#   CLOUDFLARE_ACCOUNT_ID   Cloudflare account id
+#   D1_DATABASE_ID          id of the D1 database (`wrangler d1 create <name>`)
+#   PAYLOAD_SECRET          Payload secret, uploaded to the Worker as a secret
+#
+# GitHub variables (Settings -> Secrets and variables -> Actions -> Variables), optional:
+#   WORKER_NAME             default: ink
+#   D1_DATABASE_NAME        default: ink-db
+#   R2_BUCKET_NAME          default: ink-media
+
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.event.pull_request.number || github.ref }}
+  # Never cancel a production deploy half-way through (migrations may be running).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
+  WORKER_NAME: ${{ vars.WORKER_NAME || 'ink' }}
+  D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME || 'ink-db' }}
+  R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME || 'ink-media' }}
+
+jobs:
+  deploy:
+    name: ${{ github.event_name == 'pull_request' && 'Preview deployment' || 'Production deployment' }}
+    runs-on: ubuntu-latest
+    # Secrets are not available to pull requests from forks.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
+      pull-requests: write
+    environment:
+      name: ${{ github.event_name == 'pull_request' && 'preview' || 'production' }}
+      url: ${{ steps.preview.outputs.url || steps.production.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Check required secrets
+        env:
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
+        run: |
+          missing=0
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID D1_DATABASE_ID PAYLOAD_SECRET; do
+            if [ -z "${!name}" ]; then echo "::error::Missing GitHub secret: $name"; missing=1; fi
+          done
+          exit $missing
+
+      # Removes the local-only `pnpm.overrides.esbuild` and fills wrangler.jsonc from secrets/vars.
+      - name: Prepare for Cloudflare
+        run: node scripts/prepare-cloudflare.mjs
+
+      # The lockfile was generated with the esbuild override, so it has to be re-resolved without it.
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build
+        run: pnpm run build:cloudflare
+
+      # Production only: apply Payload migrations (src/migrations) to the remote D1 database.
+      - name: Migrate D1 database
+        if: github.event_name != 'pull_request'
+        env:
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
+        run: |
+          pnpm run deploy:migrate
+          pnpm exec wrangler d1 execute D1 --remote --command 'PRAGMA optimize'
+
+      # Uploaded to the Worker with `--secrets-file` (available at runtime as process.env.PAYLOAD_SECRET).
+      # Add more runtime secrets here.
+      - name: Write Worker secrets file
+        env:
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
+        run: |
+          node -e "require('fs').writeFileSync(process.env.RUNNER_TEMP + '/secrets.json', JSON.stringify({ PAYLOAD_SECRET: process.env.PAYLOAD_SECRET }))"
+
+      - name: Deploy to production
+        id: production
+        if: github.event_name != 'pull_request'
+        run: |
+          pnpm exec wrangler deploy --secrets-file "$RUNNER_TEMP/secrets.json" --message "${GITHUB_SHA::7}" | tee "$RUNNER_TEMP/deploy.log"
+          url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/deploy.log" | head -n1)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "### 🚀 Production: $url" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload preview version
+        id: preview
+        if: github.event_name == 'pull_request'
+        run: |
+          alias="pr-${{ github.event.pull_request.number }}"
+          pnpm exec wrangler versions upload \
+            --preview-alias "$alias" \
+            --secrets-file "$RUNNER_TEMP/secrets.json" \
+            --message "PR #${{ github.event.pull_request.number }} ${GITHUB_SHA::7}" | tee "$RUNNER_TEMP/preview.log"
+          url=$(grep -oE "https://$alias-[a-zA-Z0-9.-]+\.workers\.dev" "$RUNNER_TEMP/preview.log" | head -n1)
+          [ -z "$url" ] && url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/preview.log" | head -n1)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "### 🔍 Preview: $url" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment preview URL on the pull request
+        if: github.event_name == 'pull_request' && steps.preview.outputs.url != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- cloudflare-preview -->'
+            const body = `${marker}\n🔍 **Cloudflare preview:** ${{ steps.preview.outputs.url }}\n\n` +
+              `Commit: \`${context.sha.slice(0, 7)}\`\n\n` +
+              `⚠️ Uses the production D1 database and R2 bucket. Migrations are not run for previews.`
+            const { data: comments } = await github.rest.issues.listComments({
+              ...context.repo,
+              issue_number: context.issue.number,
+            })
+            const existing = comments.find((c) => c.body?.includes(marker))
+            if (existing) {
+              await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body })
+            } else {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: context.issue.number, body })
+            }

@@ -46,3 +46,7 @@ node_modules/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# Cloudflare / wrangler
+.wrangler
+.dev.vars*
