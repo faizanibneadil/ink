@@ -103,15 +103,13 @@ How the switch works:
 
 1. Cloudflare account on the **Workers Paid** plan (the Worker bundle is ~4 MB gzipped, above the
    3 MB free-plan limit).
-2. Create the D1 database and the R2 bucket (dashboard, or `npx wrangler d1 create ink-db` and
-   `npx wrangler r2 bucket create ink-media`). Copy the D1 database id.
-3. Create a Cloudflare API token with **Workers Scripts: Edit**, **D1: Edit** and
-   **Workers R2 Storage: Edit** for your account.
-4. In GitHub → Settings → Secrets and variables → Actions add:
-   - Secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `D1_DATABASE_ID`, `PAYLOAD_SECRET`
-   - Variables (optional): `WORKER_NAME` (default `ink`), `D1_DATABASE_NAME` (default `ink-db`),
-     `R2_BUCKET_NAME` (default `ink-media`)
-5. Push to `main`. The first production deploy has to happen before PR previews can be uploaded.
+2. D1 database `ink` and R2 bucket `ink` (already created, configured in `wrangler.jsonc`).
+3. Cloudflare API token (My Profile → API Tokens → Create Token → Custom token) with:
+   Account → **Workers Scripts: Edit**, **D1: Edit**, **Workers R2 Storage: Edit**;
+   Zone `devslix.com` → **Workers Routes: Edit**, **DNS: Edit**, **Zone: Read**.
+4. GitHub → Settings → Secrets and variables → Actions → Secrets:
+   `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `PAYLOAD_SECRET`.
+5. Push to `main`. The Worker is deployed and attached to **https://ink.devslix.com**. The first production deploy has to happen before PR previews can be uploaded.
 
 ### Changing the schema
 

@@ -8,13 +8,9 @@
 # Required GitHub secrets (Settings -> Secrets and variables -> Actions -> Secrets):
 #   CLOUDFLARE_API_TOKEN    API token with Workers Scripts:Edit, D1:Edit, Workers R2 Storage:Edit
 #   CLOUDFLARE_ACCOUNT_ID   Cloudflare account id
-#   D1_DATABASE_ID          id of the D1 database (`wrangler d1 create <name>`)
 #   PAYLOAD_SECRET          Payload secret, uploaded to the Worker as a secret
 #
-# GitHub variables (Settings -> Secrets and variables -> Actions -> Variables), optional:
-#   WORKER_NAME             default: ink
-#   D1_DATABASE_NAME        default: ink-db
-#   R2_BUCKET_NAME          default: ink-media
+# Worker name, D1 database, R2 bucket and the ink.devslix.com custom domain live in wrangler.jsonc.
 
 name: CI/CD
 
@@ -33,10 +29,6 @@ concurrency:
 env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
-  WORKER_NAME: ${{ vars.WORKER_NAME || 'ink' }}
-  D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME || 'ink-db' }}
-  R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME || 'ink-media' }}
 
 jobs:
   deploy:
@@ -66,18 +58,21 @@ jobs:
           PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
         run: |
           missing=0
-          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID D1_DATABASE_ID PAYLOAD_SECRET; do
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID PAYLOAD_SECRET; do
             if [ -z "${!name}" ]; then echo "::error::Missing GitHub secret: $name"; missing=1; fi
           done
           exit $missing
 
-      # Removes the local-only `pnpm.overrides.esbuild` and fills wrangler.jsonc from secrets/vars.
+      # Removes the local-only `pnpm.overrides.esbuild`.
       - name: Prepare for Cloudflare
         run: node scripts/prepare-cloudflare.mjs
 
       # The lockfile was generated with the esbuild override, so it has to be re-resolved without it.
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
 
       - name: Build
         run: pnpm run build:cloudflare

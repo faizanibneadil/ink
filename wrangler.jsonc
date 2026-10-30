@@ -1,8 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   // Only used for the Cloudflare deployment (CI/CD). Local `pnpm dev` never reads this file.
-  // The `__PLACEHOLDER__` values are filled in by `scripts/prepare-cloudflare.mjs` from GitHub secrets/variables.
-  "name": "__WORKER_NAME__",
+  "name": "ink",
   "main": "@tanstack/react-start/server-entry",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": [
@@ -14,14 +13,22 @@
   // `*.workers.dev` URL + preview URLs (https://developers.cloudflare.com/workers/previews/)
   "workers_dev": true,
   "preview_urls": true,
+  // Custom domain: Cloudflare creates the DNS record + certificate on deploy.
+  // Requires the `devslix.com` zone to be in the same Cloudflare account.
+  "routes": [
+    {
+      "pattern": "ink.devslix.com",
+      "custom_domain": true,
+    },
+  ],
   "observability": {
     "enabled": true,
   },
   "d1_databases": [
     {
       "binding": "D1",
-      "database_id": "__D1_DATABASE_ID__",
-      "database_name": "__D1_DATABASE_NAME__",
+      "database_id": "aea2b56e-09bf-4b16-b157-acaed317f04a",
+      "database_name": "ink",
       // Lets the Payload CLI (`payload migrate`) reach the real D1 database from CI.
       "remote": true,
     },
@@ -29,7 +36,7 @@
   "r2_buckets": [
     {
       "binding": "R2",
-      "bucket_name": "__R2_BUCKET_NAME__",
+      "bucket_name": "ink",
     },
   ],
 }
