@@ -1,0 +1,86 @@
+/* Scope: sirf notion-field + default view */
+.notion-field[data-lexical-view='default'] {
+    --n-text: rgb(55 53 47);
+    --n-muted: rgb(120 119 116);
+    --n-hover: rgb(55 53 47 / 0.06);
+    --n-code-bg: rgb(247 246 243);
+    font-family: ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, sans-serif;
+  
+    /* label row hide — Notion mein title alag hota hai */
+    & > .rich-text-lexical__label-row { display: none; }
+  
+    /* Box wala look hatao */
+    & .editor-container {
+      border: 0;
+      border-radius: 0;
+      letter-spacing: normal;
+    }
+  
+    /* Page jaisa centered column */
+    & .editor {
+      max-width: 720px;
+      margin-inline: auto;
+    }
+  
+    & .note_root {
+      padding: 48px 0 30vh;                 /* Notion jaisa neeche khula space */
+      color: var(--n-text);
+      font-size: 16px;
+      line-height: 1.5;
+    }
+  
+    /* Blocks ke beech tight spacing */
+    & .note_root > * { margin-block: 2px; }
+    & .LexicalEditorTheme__paragraph { font-size: 16px; padding: 3px 2px; margin-block: 1px; }
+  
+    & .LexicalEditorTheme__h1 { font-size: 1.875em; font-weight: 600; margin-top: 2em; }
+    & .LexicalEditorTheme__h2 { font-size: 1.5em;   font-weight: 600; margin-top: 1.4em; }
+    & .LexicalEditorTheme__h3 { font-size: 1.25em;  font-weight: 600; margin-top: 1em; }
+  
+    & .LexicalEditorTheme__quote {
+      font-size: 16px;
+      border-inline-start: 3px solid currentColor;
+      padding: 0 14px;
+      margin-inline: 0;
+    }
+  
+    & .LexicalEditorTheme__textCode {
+      background: rgb(135 131 120 / 0.15);
+      color: #eb5757;
+      border-radius: 4px;
+      padding: 0.2em 0.4em;
+      font-size: 85%;
+    }
+  
+    & .LexicalEditorTheme__link { color: inherit; text-decoration-color: var(--n-muted); }
+  
+    & .LexicalEditorTheme__placeholder { color: rgb(55 53 47 / 0.35); top: 48px; }
+  
+    /* Drag handle / + button ko Notion jaisa halka karo */
+    & .draggable-block-menu,
+    & .add-block-menu { opacity: 0.35; }
+    & .draggable-block-menu:hover,
+    & .add-block-menu:hover { opacity: 1; background: var(--n-hover); border-radius: 4px; }
+  
+    /* Custom blocks */
+    & .n-code { background: var(--n-code-bg); border-radius: 4px; }
+    & .n-code__bar {
+      display: flex; justify-content: space-between;
+      padding: 6px 12px; font-size: 12px; color: var(--n-muted);
+    }
+    & .n-code pre { margin: 0; padding: 12px 16px 16px; font-size: 14px; overflow-x: auto; }
+    & .n-callout { background: rgb(241 241 239); border-radius: 4px; padding: 16px; }
+  }
+  
+  /* Dark mode — Payload html[data-theme] set karta hai */
+  html[data-theme='dark'] .notion-field[data-lexical-view='default'] {
+    --n-text: rgb(255 255 255 / 0.81);
+    --n-muted: rgb(255 255 255 / 0.45);
+    --n-hover: rgb(255 255 255 / 0.06);
+    --n-code-bg: rgb(255 255 255 / 0.03);
+  }
+  
+  /* Frontend (RichText) — same look */
+  .notion-content { max-width: 720px; margin-inline: auto; color: rgb(55 53 47); line-height: 1.5; }
+  .notion-content .n-code { background: rgb(247 246 243); border-radius: 4px; }
+  /* ...headings/paragraph ke rules tags (h1, p) ke saath yahan repeat karo */
