@@ -28,6 +28,11 @@
   "observability": {
     "enabled": true,
   },
+  "vars": {
+    // Payload `serverURL` and the only allowed CORS / CSRF origin in production.
+    // Previews get their own Preview URL from CI (`wrangler preview --var SERVER_URL:...`).
+    "SERVER_URL": "https://ink.devslix.com",
+  },
   "d1_databases": [
     {
       "binding": "D1",
