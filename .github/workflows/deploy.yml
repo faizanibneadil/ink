@@ -1,30 +1,32 @@
-# CI/CD: build Payload + TanStack Start for Cloudflare Workers (D1 + R2).
+# CI/CD: build Payload + Next.js (OpenNext) for Cloudflare Workers (D1 + R2).
 #
-# - push to `main`          -> run D1 migrations, then deploy to production
-# - pull request to `main`  -> upload a preview version (https://developers.cloudflare.com/workers/previews/)
-#                              Previews use the SAME D1 database and R2 bucket as production and
-#                              never run migrations.
+# - push to `main`           -> run D1 migrations, then deploy to production
+# - push to any other branch -> create / update a Worker Preview for that branch
+#                               (https://developers.cloudflare.com/workers/previews/)
+#                               Previews use the separate `ink-preview` D1 database and R2 bucket
+#                               (`previews` block in wrangler.jsonc). Migrations are applied to the
+#                               Preview database before each Preview.
+# - branch deleted           -> delete that branch's Preview
 #
 # Required GitHub secrets (Settings -> Secrets and variables -> Actions -> Secrets):
 #   CLOUDFLARE_API_TOKEN    API token with Workers Scripts:Edit, D1:Edit, Workers R2 Storage:Edit
 #   CLOUDFLARE_ACCOUNT_ID   Cloudflare account id
-#   PAYLOAD_SECRET          Payload secret, uploaded to the Worker as a secret
+#   PAYLOAD_SECRET          Payload secret, uploaded to the Worker (production and Previews) as a secret
 #
-# Worker name, D1 database, R2 bucket and the ink.devslix.com custom domain live in wrangler.jsonc.
+# Worker name, D1 databases, R2 buckets and the ink.devslix.com custom domain live in wrangler.jsonc.
 
 name: CI/CD
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    branches: ['**']
+  delete:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-${{ github.event.pull_request.number || github.ref }}
+  group: deploy-${{ github.event_name == 'delete' && github.event.ref || github.ref }}
   # Never cancel a production deploy half-way through (migrations may be running).
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -37,15 +39,14 @@ defaults:
 
 jobs:
   deploy:
-    name: ${{ github.event_name == 'pull_request' && 'Preview deployment' || 'Production deployment' }}
+    name: ${{ github.ref == 'refs/heads/main' && 'Production deployment' || 'Preview deployment' }}
     runs-on: ubuntu-latest
-    # Secrets are not available to pull requests from forks.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name != 'delete'
     permissions:
       contents: read
       pull-requests: write
     environment:
-      name: ${{ github.event_name == 'pull_request' && 'preview' || 'production' }}
+      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}
       url: ${{ steps.preview.outputs.url || steps.production.outputs.url }}
     steps:
       - uses: actions/checkout@v4
@@ -68,28 +69,32 @@ jobs:
           done
           exit $missing
 
-      # Removes the local-only `pnpm.overrides.esbuild`.
-      - name: Prepare for Cloudflare
-        run: node scripts/prepare-cloudflare.mjs
-
-      # The lockfile was generated with the esbuild override, so it has to be re-resolved without it.
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Typecheck
         run: pnpm run typecheck
 
+      # `opennextjs-cloudflare build`: runs `next build` and bundles the Worker into `.open-next/`
+      # (deployed below with wrangler, see `main` / `assets` in wrangler.jsonc).
       - name: Build
         run: pnpm run build:cloudflare
 
-      # Production only: apply Payload migrations (src/migrations) to the remote D1 database.
+      # Production only: apply Payload migrations (src/migrations) to the production D1 database.
       - name: Migrate D1 database
-        if: github.event_name != 'pull_request'
+        if: github.ref == 'refs/heads/main'
         env:
           PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
         run: |
           pnpm run deploy:migrate
           pnpm exec wrangler d1 execute D1 --remote --command 'PRAGMA optimize'
+
+      # Previews only: apply Payload migrations to the shared Preview D1 database (`ink-preview`).
+      - name: Migrate Preview D1 database
+        if: github.ref != 'refs/heads/main'
+        env:
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
+        run: pnpm run deploy:migrate:preview
 
       # Uploaded to the Worker with `--secrets-file` (available at runtime as process.env.PAYLOAD_SECRET).
       # Add more runtime secrets here.
@@ -101,43 +106,89 @@ jobs:
 
       - name: Deploy to production
         id: production
-        if: github.event_name != 'pull_request'
+        if: github.ref == 'refs/heads/main'
         run: |
           pnpm exec wrangler deploy --secrets-file "$RUNNER_TEMP/secrets.json" --message "${GITHUB_SHA::7}" | tee "$RUNNER_TEMP/deploy.log"
           url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/deploy.log" | head -n1)
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "### 🚀 Production: $url" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload preview version
+      - name: Preview name
+        id: name
+        if: github.ref != 'refs/heads/main'
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: echo "name=$(.github/scripts/preview-name.sh "$BRANCH")" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy Preview
         id: preview
-        if: github.event_name == 'pull_request'
+        if: github.ref != 'refs/heads/main'
+        env:
+          NAME: ${{ steps.name.outputs.name }}
         run: |
-          alias="pr-${{ github.event.pull_request.number }}"
-          pnpm exec wrangler versions upload \
-            --preview-alias "$alias" \
+          pnpm exec wrangler preview \
+            --name "$NAME" \
             --secrets-file "$RUNNER_TEMP/secrets.json" \
-            --message "PR #${{ github.event.pull_request.number }} ${GITHUB_SHA::7}" | tee "$RUNNER_TEMP/preview.log"
-          url=$(grep -oE "https://$alias-[a-zA-Z0-9.-]+\.workers\.dev" "$RUNNER_TEMP/preview.log" | head -n1)
+            --message "${GITHUB_SHA::7}" | tee "$RUNNER_TEMP/preview.log"
+          # Stable Preview URL: https://<preview>-<worker>.<subdomain>.workers.dev
+          url=$(grep -oE "https://$NAME-ink\.[a-zA-Z0-9.-]+\.workers\.dev" "$RUNNER_TEMP/preview.log" | head -n1)
           [ -z "$url" ] && url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/preview.log" | head -n1)
           echo "url=$url" >> "$GITHUB_OUTPUT"
-          echo "### 🔍 Preview: $url" >> "$GITHUB_STEP_SUMMARY"
+          echo "### 🔍 Preview (\`$GITHUB_REF_NAME\`): $url" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Comment preview URL on the pull request
-        if: github.event_name == 'pull_request' && steps.preview.outputs.url != ''
+      # If the branch has an open pull request, post / update the Preview URL on it.
+      - name: Comment Preview URL on the pull request
+        if: github.ref != 'refs/heads/main' && steps.preview.outputs.url != ''
         uses: actions/github-script@v7
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
         with:
           script: |
-            const marker = '<!-- cloudflare-preview -->'
-            const body = `${marker}\n🔍 **Cloudflare preview:** ${{ steps.preview.outputs.url }}\n\n` +
-              `Commit: \`${context.sha.slice(0, 7)}\`\n\n` +
-              `⚠️ Uses the production D1 database and R2 bucket. Migrations are not run for previews.`
-            const { data: comments } = await github.rest.issues.listComments({
+            const { data: pulls } = await github.rest.pulls.list({
               ...context.repo,
-              issue_number: context.issue.number,
+              head: `${context.repo.owner}:${context.ref.replace('refs/heads/', '')}`,
+              state: 'open',
             })
-            const existing = comments.find((c) => c.body?.includes(marker))
-            if (existing) {
-              await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body })
-            } else {
-              await github.rest.issues.createComment({ ...context.repo, issue_number: context.issue.number, body })
+            const marker = '<!-- cloudflare-preview -->'
+            const body = `${marker}\n🔍 **Cloudflare preview:** ${process.env.PREVIEW_URL}\n\n` +
+              `Commit: \`${context.sha.slice(0, 7)}\`\n\n` +
+              `Uses the \`ink-preview\` D1 database and R2 bucket (not production).`
+            for (const pull of pulls) {
+              const { data: comments } = await github.rest.issues.listComments({
+                ...context.repo,
+                issue_number: pull.number,
+              })
+              const existing = comments.find((c) => c.body?.includes(marker))
+              if (existing) {
+                await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body })
+              } else {
+                await github.rest.issues.createComment({ ...context.repo, issue_number: pull.number, body })
+              }
             }
+
+  cleanup:
+    name: Delete Preview
+    runs-on: ubuntu-latest
+    if: github.event_name == 'delete' && github.event.ref_type == 'branch' && github.event.ref != 'main'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Delete Preview
+        env:
+          BRANCH: ${{ github.event.ref }}
+        run: |
+          name=$(.github/scripts/preview-name.sh "$BRANCH")
+          pnpm exec wrangler preview delete --name "$name" --skip-confirmation

@@ -1,7 +1,5 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 *.db
-/dist
-/.tanstack
 
 # dependencies
 /node_modules
@@ -14,6 +12,10 @@
 
 # testing
 /coverage
+
+# next.js
+/.next/
+/out/
 
 # production
 /build
@@ -35,6 +37,7 @@ yarn-error.log*
 
 # TypeScript
 *.tsbuildinfo
+next-env.d.ts
 
 .env
 
@@ -47,6 +50,7 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 
-# Cloudflare / wrangler
+# OpenNext / Cloudflare / wrangler
+.open-next
 .wrangler
 .dev.vars*

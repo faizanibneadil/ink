@@ -12,6 +12,10 @@ import type { CodeBlock, Note } from '@/payload-types'
 
 import { RichText } from '@payloadcms/richtext-lexical/react'
 
+// Payload's Lexical editor CSS. The editor loads it only when it renders, so the read-only view imports it
+// itself (aliased to the file inside the package in next.config.ts).
+import '@payloadcms/richtext-lexical/bundled.css'
+
 import { views } from './config'
 
 // `views` comes from a 'use client' module, so it can only be read on the client.

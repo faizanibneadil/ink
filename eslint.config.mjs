@@ -1,18 +1,9 @@
-import eslint from '@eslint/js'
-import tseslint from 'typescript-eslint'
+import nextCoreWebVitals from 'eslint-config-next/core-web-vitals'
+import nextTypescript from 'eslint-config-next/typescript'
 
-export default [
-  {
-    ignores: [
-      '.tanstack/',
-      'dist/',
-      'src/app/_payload/importMap.js',
-      'src/payload-types.ts',
-      'src/routeTree.gen.ts',
-    ],
-  },
-  eslint.configs.recommended,
-  ...tseslint.configs.recommended,
+const eslintConfig = [
+  ...nextCoreWebVitals,
+  ...nextTypescript,
   {
     rules: {
       '@typescript-eslint/ban-ts-comment': 'warn',
@@ -21,15 +12,27 @@ export default [
       '@typescript-eslint/no-unused-vars': [
         'warn',
         {
-          args: 'after-used',
-          argsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^(_|ignore)',
-          destructuredArrayIgnorePattern: '^_',
-          ignoreRestSiblings: false,
           vars: 'all',
+          args: 'after-used',
+          ignoreRestSiblings: false,
+          argsIgnorePattern: '^_',
           varsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^(_|ignore)',
         },
       ],
     },
   },
+  {
+    ignores: [
+      '.next/',
+      '.open-next/',
+      'cloudflare-env.d.ts',
+      'src/app/(payload)/admin/importMap.js',
+      'src/payload-types.ts',
+      'src/payload-generated-schema.ts',
+    ],
+  },
 ]
+
+export default eslintConfig

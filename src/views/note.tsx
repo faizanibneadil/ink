@@ -2,9 +2,6 @@ import React from "react"
 import type { Note as NoteType } from "@/payload-types"
 import type { AdminViewServerProps } from "payload"
 
-// Payload's Lexical editor CSS. The editor loads it only when it renders, so the read-only view links it itself.
-import editorStyles from "@payloadcms/richtext-lexical/bundled.css?url"
-
 const NoteViewer = React.lazy(() => import("./note-viewer").then(module => ({
     default: module.NoteViewer
 })))
@@ -36,7 +33,6 @@ export const Note: React.FC<AdminViewServerProps> = async ({ params, payload, us
 
     return (
         <div style={{ width: '100%', marginLeft: 'auto', marginRight: 'auto', maxWidth: '60vw', paddingTop: '6rem' }}>
-            <link rel="stylesheet" href={editorStyles} precedence="default" />
             <NoteViewer note={note.note} />
         </div>
     )

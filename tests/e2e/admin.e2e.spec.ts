@@ -33,7 +33,13 @@ test.describe('Admin Panel', () => {
     )
 
     expect(payloadFontFamily).not.toBe('')
-    await expect(page.locator('link[href*="fonts.googleapis.com"]')).toHaveCount(2)
+
+    // Payload loads Inter / Roboto Mono with `next/font/google`, which sets these variables.
+    const nextFontFamily = await page.evaluate(() =>
+      getComputedStyle(document.body).getPropertyValue('--font-family-sans').trim(),
+    )
+
+    expect(nextFontFamily).not.toBe('')
   })
 
   test('can navigate to list view', async () => {

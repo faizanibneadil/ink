@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Only used by CI to run Payload migrations on the Preview database before `wrangler preview`
+  // (`pnpm deploy:migrate:preview`). Its D1 binding must point at the same database as
+  // `previews.d1_databases` in wrangler.jsonc.
+  // See https://developers.cloudflare.com/workers/previews/resources/#d1-migrations
+  "name": "ink",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "D1",
+      "database_id": "93dbd054-16cf-417d-b59a-b8ca4e2085cc",
+      "database_name": "ink-preview",
+      "remote": true,
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "R2",
+      "bucket_name": "ink-preview",
+      "remote": true,
+    },
+  ],
+}

@@ -6,56 +6,53 @@
   "type": "module",
   "scripts": {
     "build": "cross-env NODE_OPTIONS=\"--no-deprecation --max-old-space-size=8000\" payload build",
-    "build:cloudflare": "cross-env CLOUDFLARE_BUILD=true pnpm run build",
+    "build:cloudflare": "opennextjs-cloudflare build",
     "deploy:migrate": "cross-env CLOUDFLARE_REMOTE_BINDINGS=true NODE_ENV=production NODE_OPTIONS=--no-deprecation payload migrate",
-    "dev": "cross-env NODE_OPTIONS=--no-deprecation vite dev",
-    "devsafe": "rm -rf dist && cross-env NODE_OPTIONS=--no-deprecation vite dev",
+    "deploy:migrate:preview": "cross-env CLOUDFLARE_WRANGLER_CONFIG=wrangler.preview-migrations.jsonc pnpm run deploy:migrate",
+    "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev",
+    "devsafe": "rm -rf .next && rm -rf .open-next && cross-env NODE_OPTIONS=--no-deprecation next dev",
     "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
-    "generate:types": "cross-env NODE_OPTIONS=--no-deprecation payload generate:types",
+    "generate:types": "pnpm run generate:types:cloudflare && pnpm run generate:types:payload",
+    "generate:types:cloudflare": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "generate:types:payload": "cross-env NODE_OPTIONS=--no-deprecation payload generate:types",
     "lint": "cross-env NODE_OPTIONS=--no-deprecation eslint .",
     "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
-    "start": "cross-env NODE_OPTIONS=--no-deprecation srvx --prod --dir=. --static=dist/client --entry=dist/server/server.js",
+    "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
     "test": "pnpm run test:int && pnpm run test:e2e",
     "test:e2e": "cross-env NODE_OPTIONS=\"--no-deprecation --import=tsx/esm\" playwright test --config=playwright.config.ts",
     "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "^1.20.15",
     "@payloadcms/db-d1-sqlite": "4.0.0-beta.6",
     "@payloadcms/db-sqlite": "4.0.0-beta.6",
-    "@payloadcms/graphql": "4.0.0-beta.6",
+    "@payloadcms/next": "4.0.0-beta.6",
     "@payloadcms/plugin-mcp": "4.0.0-beta.6",
     "@payloadcms/richtext-lexical": "4.0.0-beta.6",
     "@payloadcms/storage-r2": "4.0.0-beta.6",
-    "@payloadcms/tanstack-start": "4.0.0-beta.6",
     "@payloadcms/ui": "4.0.0-beta.6",
-    "@tanstack/react-router": "^1.170.44",
-    "@tanstack/react-start": "^1.169.1",
     "cross-env": "10.1.0",
     "dotenv": "16.4.7",
     "graphql": "^16.8.1",
+    "next": "16.4.3",
     "payload": "4.0.0-beta.6",
     "react": "19.3.1",
-    "react-dom": "19.3.1",
-    "srvx": "0.11.21",
-    "vite": "8.3.0"
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.66.0",
-    "@eslint/js": "9.39.2",
     "@playwright/test": "1.63.0",
     "@testing-library/react": "16.3.0",
     "@types/node": "24.12.3",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.0.3",
-    "@vitejs/plugin-rsc": "^0.5.21",
     "eslint": "^9.16.0",
+    "eslint-config-next": "16.4.3",
     "jsdom": "28.0.0",
     "oxfmt": "^0.73.0",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.26.1",
     "vite-tsconfig-paths": "6.0.5",
     "vitest": "5.0.1",
     "wrangler": "^4.156.0"
@@ -65,11 +62,9 @@
     "pnpm": "^9 || ^10 || ^11"
   },
   "pnpm": {
-    "overrides": {
-      "esbuild": "0.18.20"
-    },
     "onlyBuiltDependencies": [
       "esbuild",
+      "sharp",
       "unrs-resolver",
       "workerd"
     ]
