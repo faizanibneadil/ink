@@ -31,9 +31,7 @@ export const Note: React.FC<AdminViewServerProps> = async ({ params, payload, us
         return <Editor key={note.id} id={note.id} note={note.note} user={user} />
     }
 
-    return (
-        <div style={{ width: '100%', marginLeft: 'auto', marginRight: 'auto', maxWidth: '60vw', paddingTop: '6rem' }}>
-            <NoteViewer note={note.note} />
-        </div>
-    )
+    // Reading layout (width, padding, responsive sizing) lives in note-viewer.css
+    return <NoteViewer note={note.note} />
+
 }

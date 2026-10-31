@@ -1,0 +1,648 @@
+/*
+ * Read-only note view (src/views/note-viewer.tsx): a Notion-style reading layout.
+ *
+ * - Only Payload's own fonts and colour tokens (`--font-family-*`, `--color-*`), so the view follows the
+ *   admin's light / dark theme automatically. No Payload editor (Lexical) CSS is used here.
+ * - Everything is scoped to `.note-page` / `.note-view`, so nothing leaks into the admin or the editor.
+ */
+
+.note-page {
+  /* Side padding: 16px on phones, growing to 96px on wide screens (like Notion) */
+  --note-gutter: clamp(16px, 5vw, 96px);
+  --note-text: var(--color-text);
+  --note-text-muted: var(--color-text-secondary);
+  --note-text-faint: var(--color-text-tertiary);
+  --note-border: var(--color-border);
+  --note-surface: var(--color-bg-secondary);
+  --note-hover: var(--color-bg-hover);
+  --note-inline-code: var(--color-text-danger);
+
+  box-sizing: border-box;
+  width: 100%;
+  max-width: calc(720px + 2 * var(--note-gutter));
+  margin-inline: auto;
+  padding: clamp(32px, 8vh, 96px) var(--note-gutter) 30vh;
+  color: var(--note-text);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+.note-page *,
+.note-page *::before,
+.note-page *::after {
+  box-sizing: border-box;
+}
+
+/* ---------- Text ---------- */
+
+.note-view {
+  font-family: var(--font-family-sans, var(--text-body-family)), ui-sans-serif, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 400;
+  letter-spacing: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  -webkit-font-smoothing: antialiased;
+}
+
+.note-view > :first-child {
+  margin-top: 0;
+}
+
+.note-view__p {
+  margin: 2px 0;
+  padding: 3px 2px;
+  min-height: 1.5em;
+}
+
+.note-view__h1,
+.note-view__h2,
+.note-view__h3,
+.note-view__h4,
+.note-view__h5,
+.note-view__h6 {
+  margin: 0;
+  padding: 3px 2px;
+  font-family: inherit;
+  font-weight: 600;
+  color: var(--note-text);
+  letter-spacing: -0.01em;
+}
+
+.note-view__h1 {
+  margin-top: 2em;
+  margin-bottom: 4px;
+  font-size: 1.875em;
+  line-height: 1.3;
+}
+
+.note-view__h2 {
+  margin-top: 1.4em;
+  margin-bottom: 1px;
+  font-size: 1.5em;
+  line-height: 1.3;
+}
+
+.note-view__h3 {
+  margin-top: 1em;
+  margin-bottom: 1px;
+  font-size: 1.25em;
+  line-height: 1.3;
+}
+
+.note-view__h4,
+.note-view__h5,
+.note-view__h6 {
+  margin-top: 1em;
+  margin-bottom: 1px;
+  font-size: 1em;
+  line-height: 1.5;
+}
+
+.note-view__bold {
+  font-weight: 600;
+}
+
+.note-view__italic {
+  font-style: italic;
+}
+
+.note-view__underline {
+  text-decoration: underline;
+}
+
+.note-view__strike {
+  text-decoration: line-through;
+}
+
+.note-view__underline.note-view__strike {
+  text-decoration: underline line-through;
+}
+
+.note-view sub,
+.note-view sup {
+  font-size: 0.75em;
+  line-height: 0;
+}
+
+.note-view__code {
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  background: var(--note-surface);
+  color: var(--note-inline-code);
+  font-family: var(--font-family-mono, var(--text-mono-family)), ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+  font-size: 85%;
+  line-height: normal;
+  overflow-wrap: anywhere;
+}
+
+.note-view__link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--note-text-faint);
+  text-underline-offset: 2px;
+  transition: text-decoration-color 120ms ease;
+}
+
+.note-view__link:hover {
+  text-decoration-color: currentColor;
+}
+
+.note-view__tab {
+  white-space: pre;
+}
+
+.note-view__quote {
+  margin: 12px 0;
+  padding: 3px 2px 3px 14px;
+  border-left: 3px solid currentColor;
+  font-size: 1.1em;
+}
+
+.note-view__quote > .note-view__p {
+  margin: 0;
+  padding: 0;
+}
+
+.note-view__hr {
+  margin: 14px 0;
+  border: 0;
+  border-top: 1px solid var(--note-border);
+}
+
+.note-view img,
+.note-view video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ---------- Lists ---------- */
+
+.note-view__ul,
+.note-view__ol {
+  margin: 2px 0;
+  padding-inline-start: 1.7em;
+}
+
+.note-view__ul {
+  list-style-type: disc;
+}
+
+.note-view__ul .note-view__ul {
+  list-style-type: circle;
+}
+
+.note-view__ul .note-view__ul .note-view__ul {
+  list-style-type: square;
+}
+
+.note-view__ol {
+  list-style-type: decimal;
+}
+
+.note-view__ol .note-view__ol {
+  list-style-type: lower-alpha;
+}
+
+.note-view__ol .note-view__ol .note-view__ol {
+  list-style-type: lower-roman;
+}
+
+.note-view__li {
+  padding: 3px 0 3px 2px;
+}
+
+.note-view__li::marker {
+  color: var(--note-text);
+}
+
+/* Lexical wraps nested lists in their own <li>: no marker / padding for that wrapper */
+.note-view__li--nested {
+  list-style: none;
+  padding: 0;
+}
+
+.note-view__li > .note-view__p {
+  margin: 0;
+  padding: 0;
+}
+
+/* Checklist */
+.note-view__checklist {
+  list-style: none;
+  padding-inline-start: 0;
+}
+
+.note-view__checklist .note-view__checklist {
+  padding-inline-start: 1.7em;
+}
+
+.note-view__li--checked,
+.note-view__li--unchecked {
+  position: relative;
+  padding-inline-start: 1.75em;
+}
+
+.note-view__li--checked::before,
+.note-view__li--unchecked::before {
+  content: '';
+  position: absolute;
+  top: calc(3px + 0.75em - 8px);
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--note-text-muted);
+  border-radius: 2px;
+}
+
+.note-view__li--checked::before {
+  border-color: var(--color-bg-brand, #2383e2);
+  background-color: var(--color-bg-brand, #2383e2);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 12px;
+}
+
+.note-view__li--checked {
+  color: var(--note-text-faint);
+  text-decoration: line-through;
+  text-decoration-color: var(--note-text-faint);
+}
+
+/* ---------- Tables (Notion style, scroll horizontally inside their own box) ---------- */
+
+.note-view__table-scroll {
+  position: relative;
+  max-width: 100%;
+  margin: 8px 0;
+  padding-bottom: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--note-border) transparent;
+}
+
+.note-view__table-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.note-view__table-scroll::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  background: var(--note-border);
+}
+
+.note-view__table-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.note-view__table {
+  width: max-content;
+  min-width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  border-spacing: 0;
+  table-layout: auto;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.note-view__th,
+.note-view__td {
+  min-width: 120px;
+  max-width: 400px;
+  padding: 7px 9px;
+  border: 1px solid var(--note-border);
+  vertical-align: top;
+  text-align: start;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.note-view__th {
+  background: var(--note-surface);
+  color: var(--note-text-muted);
+  font-weight: 500;
+}
+
+/* Column widths set in the editor (<colgroup>) win over the default min/max widths */
+.note-view__table:has(colgroup) .note-view__th,
+.note-view__table:has(colgroup) .note-view__td {
+  max-width: none;
+}
+
+.note-view__th > .note-view__p,
+.note-view__td > .note-view__p {
+  margin: 0;
+  padding: 0;
+  min-height: 1.5em;
+}
+
+.note-view__th > :is(.note-view__ul, .note-view__ol),
+.note-view__td > :is(.note-view__ul, .note-view__ol) {
+  margin: 0;
+}
+
+/* ---------- Code block (Notion style, with Copy button) ---------- */
+
+.note-view__codeblock {
+  position: relative;
+  margin: 8px 0;
+  border-radius: 4px;
+  background: var(--note-surface);
+}
+
+.note-view__codeblock-header {
+  position: absolute;
+  inset: 0 0 auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 32px;
+  padding: 0 6px 0 14px;
+  pointer-events: none;
+}
+
+.note-view__codeblock-lang {
+  color: var(--note-text-faint);
+  font-size: 12px;
+  line-height: 1;
+  user-select: none;
+}
+
+.note-view__codeblock-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--note-text-muted);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: auto;
+  transition:
+    opacity 120ms ease,
+    background-color 120ms ease;
+}
+
+.note-view__codeblock:hover .note-view__codeblock-copy,
+.note-view__codeblock:focus-within .note-view__codeblock-copy,
+.note-view__codeblock-copy--copied {
+  opacity: 1;
+}
+
+.note-view__codeblock-copy:hover {
+  background: var(--note-hover);
+}
+
+.note-view__codeblock-copy:focus-visible {
+  outline: 2px solid var(--color-border-selected, currentColor);
+  outline-offset: 1px;
+}
+
+/* Touch screens have no hover: always show the button */
+@media (hover: none) {
+  .note-view__codeblock-copy {
+    opacity: 1;
+  }
+}
+
+.note-view__codeblock-pre {
+  --note-gutter-width: calc(max(2, var(--note-line-digits, 2)) * 1ch + 28px);
+
+  margin: 0;
+  padding: 34px 16px 20px 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--note-border) transparent;
+  color: var(--note-code-text);
+  font-family: var(--font-family-mono, var(--text-mono-family)), ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+  font-size: 85%;
+  line-height: 1.6;
+  white-space: pre;
+  overflow-wrap: normal;
+  tab-size: 2;
+}
+
+.note-view__codeblock-pre code {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+  font: inherit;
+  counter-reset: note-line;
+}
+
+/* One line of code. The line number is a CSS counter, so it is never selected or copied. */
+.note-view__code-line {
+  display: block;
+  min-height: 1.6em;
+  padding-inline-end: 16px;
+  counter-increment: note-line;
+}
+
+.note-view__code-line::before {
+  content: counter(note-line);
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  display: inline-block;
+  width: var(--note-gutter-width);
+  margin-right: 16px;
+  padding-inline-end: 12px;
+  background: var(--note-surface);
+  color: var(--note-text-faint);
+  text-align: end;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ---------- Syntax highlighting (highlight.js classes), Notion-like colours ---------- */
+
+.note-page {
+  --note-code-text: #37352f;
+  --hl-comment: #708090;
+  --hl-keyword: #0077aa;
+  --hl-string: #669900;
+  --hl-number: #990055;
+  --hl-function: #dd4a68;
+  --hl-type: #b35e14;
+  --hl-attr: #990055;
+  --hl-tag: #0077aa;
+  --hl-variable: #ee9900;
+  --hl-operator: #9a6e3a;
+  --hl-meta: #6a737d;
+  --hl-deletion-bg: rgba(215, 58, 73, 0.12);
+  --hl-addition-bg: rgba(40, 167, 69, 0.12);
+}
+
+[data-theme='dark'] .note-page {
+  --note-code-text: #e6e6e6;
+  --hl-comment: #7f848e;
+  --hl-keyword: #c678dd;
+  --hl-string: #98c379;
+  --hl-number: #d19a66;
+  --hl-function: #61afef;
+  --hl-type: #e5c07b;
+  --hl-attr: #d19a66;
+  --hl-tag: #e06c75;
+  --hl-variable: #e06c75;
+  --hl-operator: #56b6c2;
+  --hl-meta: #abb2bf;
+  --hl-deletion-bg: rgba(224, 108, 117, 0.18);
+  --hl-addition-bg: rgba(152, 195, 121, 0.18);
+}
+
+.note-view .hljs-comment,
+.note-view .hljs-quote {
+  color: var(--hl-comment);
+  font-style: italic;
+}
+
+.note-view .hljs-keyword,
+.note-view .hljs-selector-tag,
+.note-view .hljs-literal,
+.note-view .hljs-doctag,
+.note-view .hljs-template-tag {
+  color: var(--hl-keyword);
+}
+
+.note-view .hljs-string,
+.note-view .hljs-regexp,
+.note-view .hljs-char.escape_,
+.note-view .hljs-template-string,
+.note-view .hljs-symbol,
+.note-view .hljs-bullet {
+  color: var(--hl-string);
+}
+
+.note-view .hljs-number,
+.note-view .hljs-built_in,
+.note-view .hljs-selector-pseudo {
+  color: var(--hl-number);
+}
+
+.note-view .hljs-title,
+.note-view .hljs-title.function_,
+.note-view .hljs-section {
+  color: var(--hl-function);
+}
+
+.note-view .hljs-type,
+.note-view .hljs-title.class_,
+.note-view .hljs-title.class_.inherited__,
+.note-view .hljs-class .hljs-title {
+  color: var(--hl-type);
+}
+
+.note-view .hljs-attr,
+.note-view .hljs-attribute,
+.note-view .hljs-property,
+.note-view .hljs-selector-attr,
+.note-view .hljs-selector-class,
+.note-view .hljs-selector-id {
+  color: var(--hl-attr);
+}
+
+.note-view .hljs-tag,
+.note-view .hljs-name {
+  color: var(--hl-tag);
+}
+
+.note-view .hljs-variable,
+.note-view .hljs-template-variable,
+.note-view .hljs-params,
+.note-view .hljs-link {
+  color: var(--hl-variable);
+}
+
+.note-view .hljs-operator,
+.note-view .hljs-punctuation,
+.note-view .hljs-subst {
+  color: var(--hl-operator);
+}
+
+.note-view .hljs-meta,
+.note-view .hljs-meta .hljs-keyword {
+  color: var(--hl-meta);
+}
+
+.note-view .hljs-meta .hljs-string {
+  color: var(--hl-string);
+}
+
+.note-view .hljs-emphasis {
+  font-style: italic;
+}
+
+.note-view .hljs-strong {
+  font-weight: 600;
+}
+
+.note-view .hljs-deletion {
+  background: var(--hl-deletion-bg);
+}
+
+.note-view .hljs-addition {
+  background: var(--hl-addition-bg);
+}
+
+/* ---------- Phones ---------- */
+
+@media (max-width: 600px) {
+  .note-view__h1 {
+    margin-top: 1.5em;
+    font-size: 1.625em;
+  }
+
+  .note-view__h2 {
+    font-size: 1.375em;
+  }
+
+  .note-view__h3 {
+    font-size: 1.1875em;
+  }
+
+  /* Tables and code blocks use the full screen width, so more columns / code fit */
+  .note-view__table-scroll,
+  .note-view__codeblock {
+    margin-inline: calc(-1 * var(--note-gutter));
+  }
+
+  .note-view__table-scroll {
+    max-width: none;
+    padding-inline: var(--note-gutter);
+    scroll-padding-inline: var(--note-gutter);
+  }
+
+  .note-view__codeblock {
+    border-radius: 0;
+  }
+
+  .note-view__codeblock-header {
+    padding-inline-start: var(--note-gutter);
+  }
+
+  .note-view__codeblock-pre {
+    padding-inline-end: var(--note-gutter);
+  }
+
+  .note-view__code-line::before {
+    width: calc(var(--note-gutter-width) - 28px + var(--note-gutter) + 8px);
+    margin-right: 12px;
+  }
+}
