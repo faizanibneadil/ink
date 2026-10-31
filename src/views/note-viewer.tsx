@@ -11,53 +11,15 @@ import type { JSXConverters, JSXConvertersFunction } from '@payloadcms/richtext-
 import type { CodeBlock, Note } from '@/payload-types'
 
 import { RichText } from '@payloadcms/richtext-lexical/react'
-
-// Payload's Lexical editor CSS. The editor loads it only when it renders, so the read-only view imports it
-// itself (aliased to the file inside the package in next.config.ts).
-import '@payloadcms/richtext-lexical/bundled.css'
+import { useEffect, useRef, useState } from 'react'
 
 import { views } from './config'
 
+// Notion-style read-only styles. Only styles elements inside `.note-page` / `.note-view`.
+import './note-viewer.css'
+
 // `views` comes from a 'use client' module, so it can only be read on the client.
 // Reading it in the server component (note.tsx) gives an RSC client reference where `views.default` is undefined.
-
-// Class names Payload's Lexical editor puts on its nodes (`LexicalEditorTheme` in
-// @payloadcms/richtext-lexical/dist/lexical/theme/EditorTheme.js). Payload's editor CSS only targets
-// these, so the converters below emit them to get the same styling as the editor, without custom CSS.
-const theme = {
-    root: 'LexicalEditorTheme',
-    paragraph: 'LexicalEditorTheme__paragraph',
-    quote: 'LexicalEditorTheme__quote',
-    heading: 'LexicalEditorTheme__',
-    hr: 'LexicalEditorTheme__hr',
-    link: 'LexicalEditorTheme__link',
-    tab: 'LexicalEditorTheme__tabNode',
-    list: {
-        checklist: 'LexicalEditorTheme__checklist',
-        listitem: 'LexicalEditorTheme__listItem',
-        listitemChecked: 'LexicalEditorTheme__listItemChecked',
-        listitemUnchecked: 'LexicalEditorTheme__listItemUnchecked',
-        nestedListitem: 'LexicalEditorTheme__nestedListItem',
-        ol: 'LexicalEditorTheme__ol1',
-        ul: 'LexicalEditorTheme__ul',
-    },
-    table: {
-        wrapper: 'LexicalEditorTheme__tableScrollableWrapper',
-        table: 'LexicalEditorTheme__table',
-        cell: 'LexicalEditorTheme__tableCell',
-        cellHeader: 'LexicalEditorTheme__tableCellHeader',
-    },
-    text: {
-        bold: 'LexicalEditorTheme__textBold',
-        code: 'LexicalEditorTheme__textCode',
-        italic: 'LexicalEditorTheme__textItalic',
-        strikethrough: 'LexicalEditorTheme__textStrikethrough',
-        subscript: 'LexicalEditorTheme__textSubscript',
-        superscript: 'LexicalEditorTheme__textSuperscript',
-        underline: 'LexicalEditorTheme__textUnderline',
-        underlineStrikethrough: 'LexicalEditorTheme__textUnderlineStrikethrough',
-    },
-}
 
 // Lexical text format bit flags
 const IS_BOLD = 1
@@ -73,43 +35,39 @@ const cx = (...classes: (0 | false | null | string | undefined)[]) => classes.fi
 const editorThemeConverters: JSXConverters<DefaultNodeTypes> = {
     paragraph: ({ node, nodesToJSX }) => {
         const children = nodesToJSX({ nodes: node.children })
-        return <p className={theme.paragraph}>{children?.length ? children : <br />}</p>
+        return <p className="note-view__p">{children?.length ? children : <br />}</p>
     },
     heading: ({ node, nodesToJSX }) => {
         const Tag = node.tag
-        return <Tag className={`${theme.heading}${node.tag}`}>{nodesToJSX({ nodes: node.children })}</Tag>
+        return <Tag className={`note-view__${node.tag}`}>{nodesToJSX({ nodes: node.children })}</Tag>
     },
     quote: ({ node, nodesToJSX }) => (
-        <blockquote className={theme.quote}>{nodesToJSX({ nodes: node.children })}</blockquote>
+        <blockquote className="note-view__quote">{nodesToJSX({ nodes: node.children })}</blockquote>
     ),
-    horizontalrule: () => <hr className={theme.hr} />,
-    tab: ({ node }) => <span className={theme.tab}>{node.text}</span>,
+    horizontalrule: () => <hr className="note-view__hr" />,
+    tab: ({ node }) => <span className="note-view__tab">{node.text}</span>,
     text: ({ node }) => {
         const format = node.format
-        const underline = Boolean(format & IS_UNDERLINE)
-        const strikethrough = Boolean(format & IS_STRIKETHROUGH)
         const className = cx(
-            format & IS_BOLD && theme.text.bold,
-            format & IS_ITALIC && theme.text.italic,
-            format & IS_CODE && theme.text.code,
-            format & IS_SUBSCRIPT && theme.text.subscript,
-            format & IS_SUPERSCRIPT && theme.text.superscript,
-            underline && strikethrough ? theme.text.underlineStrikethrough : cx(
-                underline && theme.text.underline,
-                strikethrough && theme.text.strikethrough,
-            ),
+            format & IS_BOLD && 'note-view__bold',
+            format & IS_ITALIC && 'note-view__italic',
+            format & IS_CODE && 'note-view__code',
+            format & IS_UNDERLINE && 'note-view__underline',
+            format & IS_STRIKETHROUGH && 'note-view__strike',
         )
-        if (!className) {
+        const isSub = Boolean(format & IS_SUBSCRIPT)
+        const isSup = Boolean(format & IS_SUPERSCRIPT)
+        if (!className && !isSub && !isSup) {
             return node.text
         }
         // Same tags Lexical's TextNode uses
         const Tag = format & IS_CODE ? 'code'
-            : format & IS_SUBSCRIPT ? 'sub'
-            : format & IS_SUPERSCRIPT ? 'sup'
+            : isSub ? 'sub'
+            : isSup ? 'sup'
             : format & IS_BOLD ? 'strong'
             : format & IS_ITALIC ? 'em'
             : 'span'
-        return <Tag className={className}>{node.text}</Tag>
+        return <Tag className={className || undefined}>{node.text}</Tag>
     },
     link: ({ node, nodesToJSX }) => {
         const doc = node.fields.doc
@@ -118,7 +76,7 @@ const editorThemeConverters: JSXConverters<DefaultNodeTypes> = {
             : node.fields.url ?? ''
         return (
             <a
-                className={theme.link}
+                className="note-view__link"
                 href={href}
                 rel={node.fields.newTab ? 'noopener noreferrer' : undefined}
                 target={node.fields.newTab ? '_blank' : undefined}
@@ -129,7 +87,7 @@ const editorThemeConverters: JSXConverters<DefaultNodeTypes> = {
     },
     autolink: ({ node, nodesToJSX }) => (
         <a
-            className={theme.link}
+            className="note-view__link"
             href={node.fields.url}
             rel={node.fields.newTab ? 'noopener noreferrer' : undefined}
             target={node.fields.newTab ? '_blank' : undefined}
@@ -140,9 +98,9 @@ const editorThemeConverters: JSXConverters<DefaultNodeTypes> = {
     list: ({ node, nodesToJSX }) => {
         const children = nodesToJSX({ nodes: node.children })
         if (node.tag === 'ol') {
-            return <ol className={theme.list.ol} start={node.start !== 1 ? node.start : undefined}>{children}</ol>
+            return <ol className="note-view__ol" start={node.start !== 1 ? node.start : undefined}>{children}</ol>
         }
-        return <ul className={cx(theme.list.ul, node.listType === 'check' && theme.list.checklist)}>{children}</ul>
+        return <ul className={cx('note-view__ul', node.listType === 'check' && 'note-view__checklist')}>{children}</ul>
     },
     listitem: ({ node, nodesToJSX, parent }) => {
         const isChecklist = (parent as SerializedListNode).listType === 'check'
@@ -152,9 +110,9 @@ const editorThemeConverters: JSXConverters<DefaultNodeTypes> = {
             <li
                 aria-checked={isChecklist && !hasSubLists ? (item.checked ? 'true' : 'false') : undefined}
                 className={cx(
-                    theme.list.listitem,
-                    hasSubLists && theme.list.nestedListitem,
-                    isChecklist && !hasSubLists && (item.checked ? theme.list.listitemChecked : theme.list.listitemUnchecked),
+                    'note-view__li',
+                    hasSubLists && 'note-view__li--nested',
+                    isChecklist && !hasSubLists && (item.checked ? 'note-view__li--checked' : 'note-view__li--unchecked'),
                 )}
                 role={isChecklist && !hasSubLists ? 'checkbox' : undefined}
                 value={item.value}
@@ -167,8 +125,8 @@ const editorThemeConverters: JSXConverters<DefaultNodeTypes> = {
         // `colWidths` is saved by the table feature but missing from the default node types
         const colWidths = (node as { colWidths?: number[] }).colWidths
         return (
-            <div className={theme.table.wrapper}>
-                <table className={theme.table.table}>
+            <div className="note-view__table-scroll">
+                <table className="note-view__table">
                     {/* Column widths set in the editor, like Lexical's own <colgroup> */}
                     {colWidths?.length ? (
                         <colgroup>
@@ -182,10 +140,11 @@ const editorThemeConverters: JSXConverters<DefaultNodeTypes> = {
     },
     tablerow: ({ node, nodesToJSX }) => <tr>{nodesToJSX({ nodes: node.children })}</tr>,
     tablecell: ({ node, nodesToJSX }) => {
-        const Tag = node.headerState > 0 ? 'th' : 'td'
+        const isHeader = node.headerState > 0
+        const Tag = isHeader ? 'th' : 'td'
         return (
             <Tag
-                className={cx(theme.table.cell, node.headerState > 0 && theme.table.cellHeader)}
+                className={isHeader ? 'note-view__th' : 'note-view__td'}
                 colSpan={node.colSpan && node.colSpan > 1 ? node.colSpan : undefined}
                 rowSpan={node.rowSpan && node.rowSpan > 1 ? node.rowSpan : undefined}
                 style={node.backgroundColor ? { backgroundColor: node.backgroundColor } : undefined}
@@ -196,6 +155,83 @@ const editorThemeConverters: JSXConverters<DefaultNodeTypes> = {
     },
 }
 
+// Display names for the languages configured on the CodeBlock in payload.config.ts
+const languageLabels: Record<string, string> = {
+    js: 'JavaScript',
+    jsx: 'JSX',
+    plaintext: 'Plain Text',
+    ts: 'TypeScript',
+    tsx: 'TSX',
+}
+
+const copyText = async (text: string) => {
+    if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text)
+        return
+    }
+    // Fallback for browsers / insecure contexts without the async clipboard API
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.setAttribute('readonly', '')
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+    document.execCommand('copy')
+    textarea.remove()
+}
+
+const CopyIcon = () => (
+    <svg aria-hidden="true" fill="none" height="14" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" viewBox="0 0 24 24" width="14">
+        <rect height="13" rx="2" width="13" x="9" y="9" />
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+)
+
+const CheckIcon = () => (
+    <svg aria-hidden="true" fill="none" height="14" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="14">
+        <path d="M20 6 9 17l-5-5" />
+    </svg>
+)
+
+const CodeBlockView: React.FC<{ code: string, language?: null | string }> = ({ code, language }) => {
+    const [copied, setCopied] = useState(false)
+    const timeout = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+    useEffect(() => () => clearTimeout(timeout.current), [])
+
+    const onCopy = async () => {
+        try {
+            await copyText(code)
+            setCopied(true)
+            clearTimeout(timeout.current)
+            timeout.current = setTimeout(() => setCopied(false), 2000)
+        } catch {
+            // Clipboard blocked: leave the button as it is
+        }
+    }
+
+    return (
+        <div className="note-view__codeblock">
+            <div className="note-view__codeblock-header">
+                <span className="note-view__codeblock-lang">
+                    {language ? languageLabels[language] ?? language : ''}
+                </span>
+                <button
+                    aria-label={copied ? 'Copied' : 'Copy code'}
+                    className={cx('note-view__codeblock-copy', copied && 'note-view__codeblock-copy--copied')}
+                    onClick={onCopy}
+                    type="button"
+                >
+                    {copied ? <CheckIcon /> : <CopyIcon />}
+                    <span>{copied ? 'Copied' : 'Copy'}</span>
+                </button>
+            </div>
+            <pre className="note-view__codeblock-pre"><code>{code}</code></pre>
+        </div>
+    )
+}
+
 type NodeTypes = DefaultNodeTypes | SerializedBlockNode<CodeBlock>
 
 const converters: JSXConvertersFunction<NodeTypes> = ({ defaultConverters }) => ({
@@ -203,22 +239,19 @@ const converters: JSXConvertersFunction<NodeTypes> = ({ defaultConverters }) => 
     ...editorThemeConverters,
     blocks: {
         // Lightweight read-only code block: preformatted code, no editor / highlighter
-        CodeBlock: ({ node }) => (
-            <div className="note-code-block">
-                {node.fields.language ? <div className="note-code-block__language">{node.fields.language}</div> : null}
-                <pre className="note-code-block__pre"><code>{node.fields.code ?? ''}</code></pre>
-            </div>
-        ),
+        CodeBlock: ({ node }) => <CodeBlockView code={node.fields.code ?? ''} language={node.fields.language} />,
     },
 })
 
 export const NoteViewer: React.FC<{ note: Note['note'] }> = ({ note }) => {
     return (
-        <RichText
-            className={theme.root}
-            converters={converters}
-            data={note as DefaultTypedEditorState}
-            nodeMap={views.default.nodes}
-        />
+        <div className="note-page">
+            <RichText
+                className="note-view"
+                converters={converters}
+                data={note as DefaultTypedEditorState}
+                nodeMap={views.default.nodes}
+            />
+        </div>
     )
 }
