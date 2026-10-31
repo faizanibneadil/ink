@@ -59,6 +59,11 @@ export default defineConfig(async (env) => {
                 },
               ]
             : []),
+          {
+            // Payload's Lexical editor stylesheet (not in the package's `exports`), used by src/views/note.tsx.
+            find: /^@payloadcms\/richtext-lexical\/bundled\.css/,
+            replacement: path.resolve(__dirname, 'node_modules/@payloadcms/richtext-lexical/dist/field/bundled.css'),
+          },
           { find: '@/', replacement: `${path.resolve(__dirname, 'src')}/` },
         ],
       },
