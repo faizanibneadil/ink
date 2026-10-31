@@ -31,6 +31,8 @@ concurrency:
 env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  # Account's workers.dev subdomain: Preview URLs are https://<preview>-ink.<subdomain>.workers.dev
+  WORKERS_SUBDOMAIN: faizanibneadil1
 
 defaults:
   run:
@@ -126,13 +128,20 @@ jobs:
         env:
           NAME: ${{ steps.name.outputs.name }}
         run: |
+          # Payload `serverURL` + allowed CORS / CSRF origin for this Preview (see src/payload.config.ts).
+          preview_url="https://$NAME-ink.$WORKERS_SUBDOMAIN.workers.dev"
           pnpm exec wrangler preview \
             --name "$NAME" \
+            --var "SERVER_URL:$preview_url" \
             --secrets-file "$RUNNER_TEMP/secrets.json" \
             --message "${GITHUB_SHA::7}" | tee "$RUNNER_TEMP/preview.log"
           # Stable Preview URL: https://<preview>-<worker>.<subdomain>.workers.dev
           url=$(grep -oE "https://$NAME-ink\.[a-zA-Z0-9.-]+\.workers\.dev" "$RUNNER_TEMP/preview.log" | head -n1)
           [ -z "$url" ] && url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/preview.log" | head -n1)
+          if [ "$url" != "$preview_url" ]; then
+            echo "::error::Preview URL is $url but SERVER_URL was set to $preview_url (check WORKERS_SUBDOMAIN)"
+            exit 1
+          fi
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "### 🔍 Preview (\`$GITHUB_REF_NAME\`): $url" >> "$GITHUB_STEP_SUMMARY"
 

@@ -104,6 +104,22 @@ Previews do not use production data: the `previews` block in `wrangler.jsonc` bi
    `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `PAYLOAD_SECRET`.
 5. Push to `main`. The Worker is deployed and attached to **https://ink.devslix.com**.
 
+### `serverURL`, CORS and CSRF
+
+`src/payload.config.ts` sets Payload's `serverURL` from `SERVER_URL` and allows only that origin for
+CORS (`cors`) and for the Payload auth cookie (`csrf`). Requests from any other origin get no CORS
+headers, and the auth cookie is ignored for them.
+
+| Environment | `SERVER_URL` | Set in |
+| --- | --- | --- |
+| Production | `https://ink.devslix.com` | `vars` in `wrangler.jsonc` |
+| Preview | `https://<preview>-ink.faizanibneadil1.workers.dev` | CI: `wrangler preview --var SERVER_URL:...` |
+| Local | `http://localhost:3000` (default) | `.env` |
+
+Logged-in admin use therefore only works on that URL: in production on `ink.devslix.com` (not on
+`ink.faizanibneadil1.workers.dev`), and for a Preview on its stable Preview URL (not on the unique
+per-deployment URLs). The workers.dev subdomain is `WORKERS_SUBDOMAIN` in the workflow.
+
 ### Changing the schema
 
 Locally Payload pushes schema changes to SQLite automatically. D1 only changes through migrations,

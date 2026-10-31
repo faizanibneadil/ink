@@ -46,7 +46,22 @@ const cloudflareLogger = {
   silent: () => {},
 } as any // eslint-disable-line @typescript-eslint/no-explicit-any -- PayloadLogger type isn't exported
 
+// Public URL of this deployment, used as Payload's `serverURL` and as the only allowed origin for
+// CORS and CSRF:
+// - production: `vars.SERVER_URL` in wrangler.jsonc (https://ink.devslix.com)
+// - Previews: passed by CI with `wrangler preview --var SERVER_URL:<Preview URL>`
+// - local: `SERVER_URL` in .env, defaults to http://localhost:3000
+const serverURL =
+  (cloudflare as { SERVER_URL?: string } | undefined)?.SERVER_URL ||
+  process.env.SERVER_URL ||
+  (cloudflare ? '' : 'http://localhost:3000')
+
 export default buildConfig({
+  serverURL,
+  // Only this deployment's own URL may call the API from a browser (CORS) or use the Payload auth
+  // cookie (CSRF). Payload also adds `serverURL` to `csrf` itself.
+  cors: serverURL ? [serverURL] : [],
+  csrf: serverURL ? [serverURL] : [],
   admin: {
     user: Users.slug,
     importMap: {
