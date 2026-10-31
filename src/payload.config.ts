@@ -86,7 +86,9 @@ export default buildConfig({
       return [...defaultFeatures]
     }
   }),
-  secret: process.env.PAYLOAD_SECRET || '',
+  // On the Worker, read the secret from the `env` binding: depending on how the bundle is chunked this
+  // module can be evaluated before `process.env` is populated.
+  secret: cloudflare?.PAYLOAD_SECRET || process.env.PAYLOAD_SECRET || '',
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },

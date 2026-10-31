@@ -5,4 +5,6 @@ import type { R2StorageOptions } from '@payloadcms/storage-r2'
 export interface CloudflareBindings {
   D1: Parameters<typeof sqliteD1Adapter>[0]['binding']
   R2: R2StorageOptions['bucket']
+  /** Worker secret (uploaded by CI with `--secrets-file`). */
+  PAYLOAD_SECRET?: string
 }
