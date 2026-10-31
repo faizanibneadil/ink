@@ -5,7 +5,7 @@ export const Settings: GlobalConfig = {
     versions: false,
     access: {
         read: () => true,
-        update: () => false,
+        update: ({ req }) => req?.user?.username === "superadmin",
     },
     fields: [{
         type: "group",
