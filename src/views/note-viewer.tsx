@@ -3,11 +3,12 @@
 import type {
     DefaultNodeTypes,
     DefaultTypedEditorState,
+    SerializedBlockNode,
     SerializedListItemNode,
     SerializedListNode,
 } from '@payloadcms/richtext-lexical'
 import type { JSXConverters, JSXConvertersFunction } from '@payloadcms/richtext-lexical/react'
-import type { Note } from '@/payload-types'
+import type { CodeBlock, Note } from '@/payload-types'
 
 import { RichText } from '@payloadcms/richtext-lexical/react'
 
@@ -191,9 +192,20 @@ const editorThemeConverters: JSXConverters<DefaultNodeTypes> = {
     },
 }
 
-const converters: JSXConvertersFunction<DefaultNodeTypes> = ({ defaultConverters }) => ({
+type NodeTypes = DefaultNodeTypes | SerializedBlockNode<CodeBlock>
+
+const converters: JSXConvertersFunction<NodeTypes> = ({ defaultConverters }) => ({
     ...defaultConverters,
     ...editorThemeConverters,
+    blocks: {
+        // Lightweight read-only code block: preformatted code, no editor / highlighter
+        CodeBlock: ({ node }) => (
+            <div className="note-code-block">
+                {node.fields.language ? <div className="note-code-block__language">{node.fields.language}</div> : null}
+                <pre className="note-code-block__pre"><code>{node.fields.code ?? ''}</code></pre>
+            </div>
+        ),
+    },
 })
 
 export const NoteViewer: React.FC<{ note: Note['note'] }> = ({ note }) => {
