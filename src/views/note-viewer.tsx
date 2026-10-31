@@ -158,13 +158,23 @@ const editorThemeConverters: JSXConverters<DefaultNodeTypes> = {
             </li>
         )
     },
-    table: ({ node, nodesToJSX }) => (
-        <div className={theme.table.wrapper}>
-            <table className={theme.table.table}>
-                <tbody>{nodesToJSX({ nodes: node.children })}</tbody>
-            </table>
-        </div>
-    ),
+    table: ({ node, nodesToJSX }) => {
+        // `colWidths` is saved by the table feature but missing from the default node types
+        const colWidths = (node as { colWidths?: number[] }).colWidths
+        return (
+            <div className={theme.table.wrapper}>
+                <table className={theme.table.table}>
+                    {/* Column widths set in the editor, like Lexical's own <colgroup> */}
+                    {colWidths?.length ? (
+                        <colgroup>
+                            {colWidths.map((width, index) => <col key={index} style={{ width }} />)}
+                        </colgroup>
+                    ) : null}
+                    <tbody>{nodesToJSX({ nodes: node.children })}</tbody>
+                </table>
+            </div>
+        )
+    },
     tablerow: ({ node, nodesToJSX }) => <tr>{nodesToJSX({ nodes: node.children })}</tr>,
     tablecell: ({ node, nodesToJSX }) => {
         const Tag = node.headerState > 0 ? 'th' : 'td'

@@ -1,0 +1,10 @@
+/* Lexical tables (editor and read-only note view): fill the available width, and scroll
+   horizontally inside the table wrapper when the columns need more room. */
+.LexicalEditorTheme__tableScrollableWrapper {
+  overflow-x: auto;
+  margin-inline-end: 0;
+}
+
+.LexicalEditorTheme__tableScrollableWrapper > .LexicalEditorTheme__table {
+  width: 100%;
+}
