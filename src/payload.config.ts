@@ -1,5 +1,6 @@
 import './lib/patch-pbkdf2'
 
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { sqliteD1Adapter } from '@payloadcms/db-d1-sqlite'
 import { sqliteAdapter } from '@payloadcms/db-sqlite'
 import { mcpPlugin } from '@payloadcms/plugin-mcp'
@@ -8,6 +9,7 @@ import { r2Storage } from '@payloadcms/storage-r2'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
+import type { GetPlatformProxyOptions } from 'wrangler'
 
 import { Users } from './collections/Users'
 import { Media } from './collections/Media'
@@ -16,16 +18,13 @@ import { Tags } from './collections/Tags'
 import { Whiteboard } from './blocks/whiteboard/config'
 import { Notes } from './collections/notes'
 import { Settings } from './globals/settings'
-// Swapped for `cloudflare-env.worker.ts` in the Worker build (alias in vite.config.ts, keep this path).
-import { getCloudflareBindings } from './lib/runtime/cloudflare-env'
-import type { CloudflareBindings } from './lib/runtime/types'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
 // Defined on the Cloudflare Worker (D1 + R2). Undefined on the local machine,
 // where Payload uses local SQLite and stores uploads on disk.
-const cloudflare = await getCloudflareBindings()
+const cloudflare = await getCloudflareEnv()
 
 const createLog =
   (level: string, fn: typeof console.log) => (objOrMsg: object | string, msg?: string) => {
@@ -88,7 +87,7 @@ export default buildConfig({
   }),
   // On the Worker, read the secret from the `env` binding: depending on how the bundle is chunked this
   // module can be evaluated before `process.env` is populated.
-  secret: cloudflare?.PAYLOAD_SECRET || process.env.PAYLOAD_SECRET || '',
+  secret: (cloudflare as { PAYLOAD_SECRET?: string } | undefined)?.PAYLOAD_SECRET || process.env.PAYLOAD_SECRET || '',
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
@@ -113,7 +112,7 @@ export default buildConfig({
     // Disabled locally: uploads go to the local `media/` folder. It is still registered so the
     // fields it adds to `media` exist locally too and both databases share the same schema.
     r2Storage({
-      bucket: cloudflare?.R2 as CloudflareBindings['R2'],
+      bucket: cloudflare?.R2 as CloudflareEnv['R2'],
       collections: { media: true },
       enabled: Boolean(cloudflare),
     }),
@@ -125,3 +124,32 @@ export default buildConfig({
   },
   plugins: [mcpPlugin({})],
 })
+
+/**
+ * - Cloudflare Worker (OpenNext): bindings from `getCloudflareContext`.
+ * - CI only (`CLOUDFLARE_REMOTE_BINDINGS=true`, used by `pnpm deploy:migrate`): the Payload CLI
+ *   reaches the real D1 database through wrangler's platform proxy.
+ * - Everywhere else (local `pnpm dev`, `next build`, Payload CLI): `undefined`, so Payload uses
+ *   local SQLite and local disk uploads. There is no connection to Cloudflare at all.
+ */
+async function getCloudflareEnv(): Promise<CloudflareEnv | undefined> {
+  if (process.env.CLOUDFLARE_REMOTE_BINDINGS === 'true') {
+    // Adapted from the official Payload `with-cloudflare-d1` template.
+    // Indirect specifier so the bundler never tries to bundle wrangler.
+    const { getPlatformProxy } = await import(
+      /* webpackIgnore: true */ `${'__wrangler'.replaceAll('_', '')}`
+    )
+    const proxy = await getPlatformProxy({
+      environment: process.env.CLOUDFLARE_ENV || undefined,
+      remoteBindings: true,
+    } satisfies GetPlatformProxyOptions)
+    return proxy.env as CloudflareEnv
+  }
+
+  const isWorker = typeof navigator !== 'undefined' && navigator.userAgent === 'Cloudflare-Workers'
+  if (isWorker) {
+    return (await getCloudflareContext({ async: true })).env
+  }
+
+  return undefined
+}

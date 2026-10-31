@@ -1,24 +1,30 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { getPayload } from 'payload'
-import config from "@payload-config"
+import type { Metadata } from 'next'
+
 import { getSiteSettings } from '@/utilities/getSiteSettings'
 
+// Rendered on every request (reads the site icon from Payload).
+export const dynamic = 'force-dynamic'
 
-export const Route = createFileRoute('/_frontend/')({
-  loader: async () => ({ icon: (await getSiteSettings())?.icon }),
-  component: HomePage,
-  head: ({ loaderData }) => ({
-    meta: [{ title: 'Payload TanStack Blank Template' }],
-    links: typeof loaderData?.icon === "object" && loaderData?.icon?.url ? [
-      { rel: 'icon', href: loaderData?.icon?.url! },
-      { rel: 'icon', type: 'image/svg', sizes: '32x32', href: loaderData?.icon?.url! },
-      { rel: 'icon', type: 'image/svg', sizes: '16x16', href: loaderData?.icon?.url! },
-      { rel: 'apple-touch-icon', sizes: '180x180', href: loaderData?.icon?.url! },
-    ] : [],
-  }),
-})
+export async function generateMetadata(): Promise<Metadata> {
+  const { icon } = await getSiteSettings()
+  const iconURL = typeof icon === 'object' && icon?.url ? icon.url : undefined
 
-function HomePage() {
+  return {
+    title: 'Payload Blank Template',
+    icons: iconURL
+      ? {
+          icon: [
+            { url: iconURL },
+            { url: iconURL, type: 'image/svg', sizes: '32x32' },
+            { url: iconURL, type: 'image/svg', sizes: '16x16' },
+          ],
+          apple: [{ url: iconURL, sizes: '180x180' }],
+        }
+      : undefined,
+  }
+}
+
+export default function HomePage() {
   return (
     <div className="home" data-test="payload-ui-barrel-sentinel">
       <div className="content">
@@ -48,7 +54,7 @@ function HomePage() {
       </div>
       <div className="footer">
         <p>Update this page by editing</p>
-        <code className="codeLink">src/app/_frontend/index.tsx</code>
+        <code className="codeLink">src/app/(frontend)/page.tsx</code>
       </div>
     </div>
   )

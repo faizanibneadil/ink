@@ -2,7 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   // Only used for the Cloudflare deployment (CI/CD). Local `pnpm dev` never reads this file.
   "name": "ink",
-  "main": "@tanstack/react-start/server-entry",
+  "main": ".open-next/worker.js",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": [
     // Enable Node.js APIs (also populates `process.env` from vars & secrets)
@@ -10,6 +10,10 @@
     // Allow to fetch URLs in your app
     "global_fetch_strictly_public",
   ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS",
+  },
   // `*.workers.dev` URL + preview URLs (https://developers.cloudflare.com/workers/previews/)
   "workers_dev": true,
   "preview_urls": true,

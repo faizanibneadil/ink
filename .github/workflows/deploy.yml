@@ -1,4 +1,4 @@
-# CI/CD: build Payload + TanStack Start for Cloudflare Workers (D1 + R2).
+# CI/CD: build Payload + Next.js (OpenNext) for Cloudflare Workers (D1 + R2).
 #
 # - push to `main`          -> run D1 migrations, then deploy to production
 # - pull request to `main`  -> upload a preview version (https://developers.cloudflare.com/workers/previews/)
@@ -68,17 +68,14 @@ jobs:
           done
           exit $missing
 
-      # Removes the local-only `pnpm.overrides.esbuild`.
-      - name: Prepare for Cloudflare
-        run: node scripts/prepare-cloudflare.mjs
-
-      # The lockfile was generated with the esbuild override, so it has to be re-resolved without it.
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Typecheck
         run: pnpm run typecheck
 
+      # `opennextjs-cloudflare build`: runs `next build` and bundles the Worker into `.open-next/`
+      # (deployed below with wrangler, see `main` / `assets` in wrangler.jsonc).
       - name: Build
         run: pnpm run build:cloudflare
 

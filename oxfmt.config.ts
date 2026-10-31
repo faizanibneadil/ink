@@ -2,9 +2,9 @@ import type { OxfmtConfig } from 'oxfmt'
 
 export default {
   ignorePatterns: [
-    'src/app/_payload/importMap.js',
+    'src/app/(payload)/admin/importMap.js',
     'src/payload-types.ts',
-    'src/routeTree.gen.ts',
+    'cloudflare-env.d.ts',
     'tsconfig.json',
   ],
   printWidth: 100,
