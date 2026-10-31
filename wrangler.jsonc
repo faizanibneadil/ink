@@ -25,8 +25,26 @@
       "custom_domain": true,
     },
   ],
+  // Workers Logs, traces and Issues (https://developers.cloudflare.com/workers/observability/).
+  // Every request is logged and traced (sampling rate 1) and kept in the Cloudflare dashboard.
   "observability": {
     "enabled": true,
+    "head_sampling_rate": 1,
+    "redact_query_string": false,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true,
+      "persist": true,
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+    },
+    "issues": {
+      "enabled": true,
+    },
   },
   "vars": {
     // Payload `serverURL` and the only allowed CORS / CSRF origin in production.
