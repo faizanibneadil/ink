@@ -43,4 +43,23 @@
       "bucket_name": "ink",
     },
   ],
+  // Worker Previews (https://developers.cloudflare.com/workers/previews/), created by CI for every
+  // branch with `wrangler preview`. Previews do not inherit the production bindings above: they use
+  // the separate `ink-preview` D1 database and R2 bucket, shared by all Previews.
+  // Keep the D1 binding in sync with `wrangler.preview-migrations.jsonc`.
+  "previews": {
+    "d1_databases": [
+      {
+        "binding": "D1",
+        "database_id": "93dbd054-16cf-417d-b59a-b8ca4e2085cc",
+        "database_name": "ink-preview",
+      },
+    ],
+    "r2_buckets": [
+      {
+        "binding": "R2",
+        "bucket_name": "ink-preview",
+      },
+    ],
+  },
 }

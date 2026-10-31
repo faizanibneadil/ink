@@ -79,21 +79,30 @@ How it works (based on Payload's official
 ### CI/CD (`.github/workflows/deploy.yml`)
 
 - **Push to `main`** → build → run Payload migrations on D1 → `wrangler deploy` (production).
-- **Pull request to `main`** → build → `wrangler versions upload --preview-alias pr-<number>`
-  ([preview URL](https://developers.cloudflare.com/workers/previews/)), posted as a PR comment.
-  Previews share the production D1 database and R2 bucket and **never run migrations**.
+- **Push to any other branch** → build → run Payload migrations on the Preview D1 database →
+  `wrangler preview --name <branch>` ([Worker Previews](https://developers.cloudflare.com/workers/previews/)).
+  The Preview URL (`https://<branch>-ink.<subdomain>.workers.dev`) is shown in the GitHub Actions
+  run summary and posted on the branch's pull request, if one is open. The branch name is turned
+  into a valid Preview name by `.github/scripts/preview-name.sh` (e.g. `claude/foo` → `claude-foo`).
+- **Branch deleted** → `wrangler preview delete` removes that branch's Preview.
+
+Previews do not use production data: the `previews` block in `wrangler.jsonc` binds them to the
+`ink-preview` D1 database and the `ink-preview` R2 bucket, shared by all Previews.
+`wrangler.preview-migrations.jsonc` points the Payload CLI at the same database
+(`pnpm deploy:migrate:preview`); keep both files in sync.
 
 ### One-time setup
 
 1. Cloudflare account on the **Workers Paid** plan (the Worker bundle is ~7 MB gzipped, above the
    3 MB free-plan limit).
-2. D1 database `ink` and R2 bucket `ink` (already created, configured in `wrangler.jsonc`).
+2. D1 database `ink` and R2 bucket `ink` for production, D1 database `ink-preview` and R2 bucket
+   `ink-preview` for Previews (already created, configured in `wrangler.jsonc`).
 3. Cloudflare API token (My Profile → API Tokens → Create Token → Custom token) with:
    Account → **Workers Scripts: Edit**, **D1: Edit**, **Workers R2 Storage: Edit**;
    Zone `devslix.com` → **Workers Routes: Edit**, **DNS: Edit**, **Zone: Read**.
 4. GitHub → Settings → Secrets and variables → Actions → Secrets:
    `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `PAYLOAD_SECRET`.
-5. Push to `main`. The Worker is deployed and attached to **https://ink.devslix.com**. The first production deploy has to happen before PR previews can be uploaded.
+5. Push to `main`. The Worker is deployed and attached to **https://ink.devslix.com**.
 
 ### Changing the schema
 
@@ -104,4 +113,5 @@ so after changing collections, globals or fields run:
 pnpm payload migrate:create <name>
 ```
 
-and commit the new files in `src/migrations`. The next push to `main` applies them to D1.
+and commit the new files in `src/migrations`. Every Preview deploy applies them to the Preview
+database, and the next push to `main` applies them to the production D1 database.

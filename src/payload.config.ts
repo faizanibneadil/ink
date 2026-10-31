@@ -127,8 +127,9 @@ export default buildConfig({
 
 /**
  * - Cloudflare Worker (OpenNext): bindings from `getCloudflareContext`.
- * - CI only (`CLOUDFLARE_REMOTE_BINDINGS=true`, used by `pnpm deploy:migrate`): the Payload CLI
- *   reaches the real D1 database through wrangler's platform proxy.
+ * - CI only (`CLOUDFLARE_REMOTE_BINDINGS=true`, used by `pnpm deploy:migrate` and
+ *   `pnpm deploy:migrate:preview`): the Payload CLI reaches the real D1 database through
+ *   wrangler's platform proxy.
  * - Everywhere else (local `pnpm dev`, `next build`, Payload CLI): `undefined`, so Payload uses
  *   local SQLite and local disk uploads. There is no connection to Cloudflare at all.
  */
@@ -140,6 +141,8 @@ async function getCloudflareEnv(): Promise<CloudflareEnv | undefined> {
       /* webpackIgnore: true */ `${'__wrangler'.replaceAll('_', '')}`
     )
     const proxy = await getPlatformProxy({
+      // `wrangler.preview-migrations.jsonc` for the Preview database, wrangler.jsonc otherwise.
+      configPath: process.env.CLOUDFLARE_WRANGLER_CONFIG || undefined,
       environment: process.env.CLOUDFLARE_ENV || undefined,
       remoteBindings: true,
     } satisfies GetPlatformProxyOptions)
