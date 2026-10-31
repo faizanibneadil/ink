@@ -420,25 +420,185 @@
 }
 
 .note-view__codeblock-pre {
+  --note-gutter-width: calc(max(2, var(--note-line-digits, 2)) * 1ch + 28px);
+
   margin: 0;
-  padding: 34px 16px 20px;
+  padding: 34px 16px 20px 0;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scrollbar-color: var(--note-border) transparent;
-  color: var(--note-text);
+  color: var(--note-code-text);
   font-family: var(--font-family-mono, var(--text-mono-family)), ui-monospace, SFMono-Regular, Menlo, Consolas,
     monospace;
   font-size: 85%;
-  line-height: 1.5;
+  line-height: 1.6;
   white-space: pre;
   overflow-wrap: normal;
   tab-size: 2;
 }
 
 .note-view__codeblock-pre code {
+  display: block;
+  width: max-content;
+  min-width: 100%;
   font: inherit;
+  counter-reset: note-line;
+}
+
+/* One line of code. The line number is a CSS counter, so it is never selected or copied. */
+.note-view__code-line {
+  display: block;
+  min-height: 1.6em;
+  padding-inline-end: 16px;
+  counter-increment: note-line;
+}
+
+.note-view__code-line::before {
+  content: counter(note-line);
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  display: inline-block;
+  width: var(--note-gutter-width);
+  margin-right: 16px;
+  padding-inline-end: 12px;
+  background: var(--note-surface);
+  color: var(--note-text-faint);
+  text-align: end;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ---------- Syntax highlighting (highlight.js classes), Notion-like colours ---------- */
+
+.note-page {
+  --note-code-text: #37352f;
+  --hl-comment: #708090;
+  --hl-keyword: #0077aa;
+  --hl-string: #669900;
+  --hl-number: #990055;
+  --hl-function: #dd4a68;
+  --hl-type: #b35e14;
+  --hl-attr: #990055;
+  --hl-tag: #0077aa;
+  --hl-variable: #ee9900;
+  --hl-operator: #9a6e3a;
+  --hl-meta: #6a737d;
+  --hl-deletion-bg: rgba(215, 58, 73, 0.12);
+  --hl-addition-bg: rgba(40, 167, 69, 0.12);
+}
+
+[data-theme='dark'] .note-page {
+  --note-code-text: #e6e6e6;
+  --hl-comment: #7f848e;
+  --hl-keyword: #c678dd;
+  --hl-string: #98c379;
+  --hl-number: #d19a66;
+  --hl-function: #61afef;
+  --hl-type: #e5c07b;
+  --hl-attr: #d19a66;
+  --hl-tag: #e06c75;
+  --hl-variable: #e06c75;
+  --hl-operator: #56b6c2;
+  --hl-meta: #abb2bf;
+  --hl-deletion-bg: rgba(224, 108, 117, 0.18);
+  --hl-addition-bg: rgba(152, 195, 121, 0.18);
+}
+
+.note-view .hljs-comment,
+.note-view .hljs-quote {
+  color: var(--hl-comment);
+  font-style: italic;
+}
+
+.note-view .hljs-keyword,
+.note-view .hljs-selector-tag,
+.note-view .hljs-literal,
+.note-view .hljs-doctag,
+.note-view .hljs-template-tag {
+  color: var(--hl-keyword);
+}
+
+.note-view .hljs-string,
+.note-view .hljs-regexp,
+.note-view .hljs-char.escape_,
+.note-view .hljs-template-string,
+.note-view .hljs-symbol,
+.note-view .hljs-bullet {
+  color: var(--hl-string);
+}
+
+.note-view .hljs-number,
+.note-view .hljs-built_in,
+.note-view .hljs-selector-pseudo {
+  color: var(--hl-number);
+}
+
+.note-view .hljs-title,
+.note-view .hljs-title.function_,
+.note-view .hljs-section {
+  color: var(--hl-function);
+}
+
+.note-view .hljs-type,
+.note-view .hljs-title.class_,
+.note-view .hljs-title.class_.inherited__,
+.note-view .hljs-class .hljs-title {
+  color: var(--hl-type);
+}
+
+.note-view .hljs-attr,
+.note-view .hljs-attribute,
+.note-view .hljs-property,
+.note-view .hljs-selector-attr,
+.note-view .hljs-selector-class,
+.note-view .hljs-selector-id {
+  color: var(--hl-attr);
+}
+
+.note-view .hljs-tag,
+.note-view .hljs-name {
+  color: var(--hl-tag);
+}
+
+.note-view .hljs-variable,
+.note-view .hljs-template-variable,
+.note-view .hljs-params,
+.note-view .hljs-link {
+  color: var(--hl-variable);
+}
+
+.note-view .hljs-operator,
+.note-view .hljs-punctuation,
+.note-view .hljs-subst {
+  color: var(--hl-operator);
+}
+
+.note-view .hljs-meta,
+.note-view .hljs-meta .hljs-keyword {
+  color: var(--hl-meta);
+}
+
+.note-view .hljs-meta .hljs-string {
+  color: var(--hl-string);
+}
+
+.note-view .hljs-emphasis {
+  font-style: italic;
+}
+
+.note-view .hljs-strong {
+  font-weight: 600;
+}
+
+.note-view .hljs-deletion {
+  background: var(--hl-deletion-bg);
+}
+
+.note-view .hljs-addition {
+  background: var(--hl-addition-bg);
 }
 
 /* ---------- Phones ---------- */
@@ -478,6 +638,11 @@
   }
 
   .note-view__codeblock-pre {
-    padding-inline: var(--note-gutter);
+    padding-inline-end: var(--note-gutter);
+  }
+
+  .note-view__code-line::before {
+    width: calc(var(--note-gutter-width) - 28px + var(--note-gutter) + 8px);
+    margin-right: 12px;
   }
 }

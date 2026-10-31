@@ -110,7 +110,7 @@ export interface Config {
   };
   blocks: {
     whiteboard: WhiteboardBlockPropsType_55EBDED8;
-    CodeBlock: CodeBlock_AFC2D528;
+    CodeBlock: CodeBlock_570EF7B0;
   };
   collections: {
     users: User;
@@ -192,10 +192,57 @@ export interface WhiteboardBlockPropsType_55EBDED8 {
  * Multiple blocks resolve to the `CodeBlock` interface with different fields, so a content hash is appended to keep the generated types stable and unambiguous. Set a unique `interfaceName` on the block to choose the name yourself. See https://payloadcms.com/docs/typescript/generating-types#block-interface-name-collisions
  *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "CodeBlock_AFC2D528".
+ * via the `definition` "CodeBlock_570EF7B0".
  */
-export interface CodeBlock_AFC2D528 {
-  language?: ('plaintext' | 'js' | 'ts' | 'tsx' | 'jsx') | null;
+export interface CodeBlock_570EF7B0 {
+  language?:
+    | (
+        | 'plaintext'
+        | 'ts'
+        | 'tsx'
+        | 'js'
+        | 'jsx'
+        | 'json'
+        | 'html'
+        | 'css'
+        | 'scss'
+        | 'less'
+        | 'markdown'
+        | 'yaml'
+        | 'xml'
+        | 'graphql'
+        | 'sql'
+        | 'mysql'
+        | 'pgsql'
+        | 'shell'
+        | 'powershell'
+        | 'bat'
+        | 'dockerfile'
+        | 'ini'
+        | 'python'
+        | 'java'
+        | 'kotlin'
+        | 'swift'
+        | 'objective-c'
+        | 'dart'
+        | 'go'
+        | 'rust'
+        | 'c'
+        | 'cpp'
+        | 'csharp'
+        | 'vb'
+        | 'php'
+        | 'ruby'
+        | 'perl'
+        | 'lua'
+        | 'r'
+        | 'scala'
+        | 'elixir'
+        | 'protobuf'
+        | 'handlebars'
+        | 'twig'
+      )
+    | null;
   code?: string | null;
   id?: string | null;
   blockName?: string | null;
@@ -713,7 +760,54 @@ export interface WhiteboardBlockPropsType {
 export interface CodeBlock {
   id: string;
   blockType: 'CodeBlock';
-  language?: ('plaintext' | 'js' | 'ts' | 'tsx' | 'jsx') | null;
+  language?:
+    | (
+        | 'plaintext'
+        | 'ts'
+        | 'tsx'
+        | 'js'
+        | 'jsx'
+        | 'json'
+        | 'html'
+        | 'css'
+        | 'scss'
+        | 'less'
+        | 'markdown'
+        | 'yaml'
+        | 'xml'
+        | 'graphql'
+        | 'sql'
+        | 'mysql'
+        | 'pgsql'
+        | 'shell'
+        | 'powershell'
+        | 'bat'
+        | 'dockerfile'
+        | 'ini'
+        | 'python'
+        | 'java'
+        | 'kotlin'
+        | 'swift'
+        | 'objective-c'
+        | 'dart'
+        | 'go'
+        | 'rust'
+        | 'c'
+        | 'cpp'
+        | 'csharp'
+        | 'vb'
+        | 'php'
+        | 'ruby'
+        | 'perl'
+        | 'lua'
+        | 'r'
+        | 'scala'
+        | 'elixir'
+        | 'protobuf'
+        | 'handlebars'
+        | 'twig'
+      )
+    | null;
   code?: string | null;
   blockName?: string | null;
 }

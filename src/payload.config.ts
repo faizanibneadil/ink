@@ -17,6 +17,7 @@ import { Folders } from './collections/Folders'
 import { Tags } from './collections/Tags'
 import { Whiteboard } from './blocks/whiteboard/config'
 import { Notes } from './collections/notes'
+import { codeLanguages } from './blocks/code/languages'
 import { Settings } from './globals/settings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -85,13 +86,8 @@ export default buildConfig({
     fieldOverrides: {
       slug: "CodeBlock"
     },
-    languages: {
-      plaintext: "Plain Text",
-      js: "JavaScript",
-      ts: "TypeScript",
-      tsx: "TSX",
-      jsx: "JSX"
-    }
+    // Popular languages, shared with the read-only note view (syntax highlighting)
+    languages: codeLanguages
   })],
   collections: [Users, Media, Folders, Tags, Notes],
   globals: [Settings],

@@ -11,9 +11,12 @@ import type { JSXConverters, JSXConvertersFunction } from '@payloadcms/richtext-
 import type { CodeBlock, Note } from '@/payload-types'
 
 import { RichText } from '@payloadcms/richtext-lexical/react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+
+import { codeLanguages } from '@/blocks/code/languages'
 
 import { views } from './config'
+import { highlightLines } from './highlight'
 
 // Notion-style read-only styles. Only styles elements inside `.note-page` / `.note-view`.
 import './note-viewer.css'
@@ -155,15 +158,6 @@ const editorThemeConverters: JSXConverters<DefaultNodeTypes> = {
     },
 }
 
-// Display names for the languages configured on the CodeBlock in payload.config.ts
-const languageLabels: Record<string, string> = {
-    js: 'JavaScript',
-    jsx: 'JSX',
-    plaintext: 'Plain Text',
-    ts: 'TypeScript',
-    tsx: 'TSX',
-}
-
 const copyText = async (text: string) => {
     if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(text)
@@ -197,6 +191,8 @@ const CheckIcon = () => (
 const CodeBlockView: React.FC<{ code: string, language?: null | string }> = ({ code, language }) => {
     const [copied, setCopied] = useState(false)
     const timeout = useRef<ReturnType<typeof setTimeout>>(undefined)
+    const lines = useMemo(() => highlightLines(code, language), [code, language])
+    const label = language ? codeLanguages[language as keyof typeof codeLanguages] ?? language : ''
 
     useEffect(() => () => clearTimeout(timeout.current), [])
 
@@ -215,7 +211,7 @@ const CodeBlockView: React.FC<{ code: string, language?: null | string }> = ({ c
         <div className="note-view__codeblock">
             <div className="note-view__codeblock-header">
                 <span className="note-view__codeblock-lang">
-                    {language ? languageLabels[language] ?? language : ''}
+                    {label}
                 </span>
                 <button
                     aria-label={copied ? 'Copied' : 'Copy code'}
@@ -227,7 +223,18 @@ const CodeBlockView: React.FC<{ code: string, language?: null | string }> = ({ c
                     <span>{copied ? 'Copied' : 'Copy'}</span>
                 </button>
             </div>
-            <pre className="note-view__codeblock-pre"><code>{code}</code></pre>
+            {/* One element per line: CSS adds the line numbers (not selectable, not copied) */}
+            <pre
+                className="note-view__codeblock-pre"
+                style={{ '--note-line-digits': String(lines.length).length } as React.CSSProperties}
+            >
+                <code className="hljs">
+                    {lines.map((line, index) => (
+                        // highlight.js output: only <span class="hljs-*"> and escaped text
+                        <span className="note-view__code-line" dangerouslySetInnerHTML={{ __html: line }} key={index} />
+                    ))}
+                </code>
+            </pre>
         </div>
     )
 }
@@ -238,7 +245,7 @@ const converters: JSXConvertersFunction<NodeTypes> = ({ defaultConverters }) => 
     ...defaultConverters,
     ...editorThemeConverters,
     blocks: {
-        // Lightweight read-only code block: preformatted code, no editor / highlighter
+        // Read-only code block: line numbers + syntax highlighting (highlight.js), no editor
         CodeBlock: ({ node }) => <CodeBlockView code={node.fields.code ?? ''} language={node.fields.language} />,
     },
 })
