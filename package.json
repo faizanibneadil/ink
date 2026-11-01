@@ -24,6 +24,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@excalidraw/excalidraw": "0.18.1",
     "@opennextjs/cloudflare": "^1.20.15",
     "@payloadcms/db-d1-sqlite": "4.0.0-beta.6",
     "@payloadcms/db-sqlite": "4.0.0-beta.6",

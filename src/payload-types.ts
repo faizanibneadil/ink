@@ -62,20 +62,21 @@ export type SupportedTimezones =
   | 'Pacific/Fiji';
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "LexicalNodes_7189E3EC".
+ * via the `definition` "LexicalNodes_31D53ABE".
  */
-export type LexicalNodes_7189E3EC =
+export type LexicalNodes_31D53ABE =
   | SerializedTextNode
   | SerializedTabNode
   | SerializedLineBreakNode
-  | SerializedParagraphNode<LexicalNodes_7189E3EC>
-  | SerializedTableNode<LexicalNodes_7189E3EC>
-  | SerializedTableCellNode<LexicalNodes_7189E3EC>
-  | SerializedTableRowNode<LexicalNodes_7189E3EC>
-  | SerializedBlockNode<WhiteboardBlockPropsType | CodeBlock>
+  | SerializedParagraphNode<LexicalNodes_31D53ABE>
+  | SerializedExcalidrawNode
+  | SerializedTableNode<LexicalNodes_31D53ABE>
+  | SerializedTableCellNode<LexicalNodes_31D53ABE>
+  | SerializedTableRowNode<LexicalNodes_31D53ABE>
+  | SerializedBlockNode<CodeBlock>
   | SerializedHorizontalRuleNode
   | SerializedUploadNode<'media'>
-  | SerializedQuoteNode<LexicalNodes_7189E3EC>
+  | SerializedQuoteNode<LexicalNodes_31D53ABE>
   | SerializedRelationshipNode<
       | 'users'
       | 'folders'
@@ -86,11 +87,11 @@ export type LexicalNodes_7189E3EC =
       | 'payload-preferences'
       | 'payload-migrations'
     >
-  | SerializedAutoLinkNode<LexicalNodes_7189E3EC, LexicalLinkFields>
-  | SerializedLinkNode<LexicalNodes_7189E3EC, LexicalLinkFields>
-  | SerializedListNode<LexicalNodes_7189E3EC>
-  | SerializedListItemNode<LexicalNodes_7189E3EC>
-  | SerializedHeadingNode<LexicalNodes_7189E3EC>;
+  | SerializedAutoLinkNode<LexicalNodes_31D53ABE, LexicalLinkFields>
+  | SerializedLinkNode<LexicalNodes_31D53ABE, LexicalLinkFields>
+  | SerializedListNode<LexicalNodes_31D53ABE>
+  | SerializedListItemNode<LexicalNodes_31D53ABE>
+  | SerializedHeadingNode<LexicalNodes_31D53ABE>;
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "LexicalNodes_3DE324E4".
@@ -109,7 +110,6 @@ export interface Config {
     users: UserAuthOperations;
   };
   blocks: {
-    whiteboard: WhiteboardBlockPropsType_55EBDED8;
     CodeBlock: CodeBlock_570EF7B0;
   };
   collections: {
@@ -176,17 +176,6 @@ export interface UserAuthOperations {
   unlock: {
     username: string;
   };
-}
-/**
- * Multiple blocks resolve to the `WhiteboardBlockPropsType` interface with different fields, so a content hash is appended to keep the generated types stable and unambiguous. Set a unique `interfaceName` on the block to choose the name yourself. See https://payloadcms.com/docs/typescript/generating-types#block-interface-name-collisions
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "WhiteboardBlockPropsType_55EBDED8".
- */
-export interface WhiteboardBlockPropsType_55EBDED8 {
-  id?: string | null;
-  blockName?: string | null;
-  blockType: 'whiteboard';
 }
 /**
  * Multiple blocks resolve to the `CodeBlock` interface with different fields, so a content hash is appended to keep the generated types stable and unambiguous. Set a unique `interfaceName` on the block to choose the name yourself. See https://payloadcms.com/docs/typescript/generating-types#block-interface-name-collisions
@@ -372,7 +361,7 @@ export interface Tag {
  */
 export interface Note {
   id: number;
-  note?: LexicalRichText<LexicalNodes_7189E3EC> | null;
+  note?: LexicalRichText<LexicalNodes_31D53ABE> | null;
   createdBy?: {
     relationTo: 'users';
     value: number | User;
@@ -746,15 +735,6 @@ export interface UploadDropzoneWidget {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "WhiteboardBlockPropsType".
- */
-export interface WhiteboardBlockPropsType {
-  id: string;
-  blockType: 'whiteboard';
-  blockName?: string | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "CodeBlock".
  */
 export interface CodeBlock {
@@ -868,6 +848,13 @@ export interface SerializedParagraphNode<TChildren> extends SerializedLexicalEle
   type: 'paragraph';
   textFormat: number;
   textStyle: string;
+}
+
+export interface SerializedExcalidrawNode {
+  type: 'excalidraw';
+  /** Drawing as a JSON string: { elements, appState, files } */
+  data: string;
+  version: number;
 }
 
 export interface SerializedTableNode<TChildren> extends SerializedLexicalElementBase<TChildren> {

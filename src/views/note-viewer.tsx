@@ -14,6 +14,8 @@ import { RichText } from '@payloadcms/richtext-lexical/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { codeLanguages } from '@/blocks/code/languages'
+import { ExcalidrawViewer } from '@/features/excalidraw/components/ExcalidrawViewer'
+import type { SerializedExcalidrawNode } from '@/features/excalidraw/nodes/ExcalidrawServerNode'
 
 import { views } from './config'
 import { highlightLines } from './highlight'
@@ -239,11 +241,13 @@ const CodeBlockView: React.FC<{ code: string, language?: null | string }> = ({ c
     )
 }
 
-type NodeTypes = DefaultNodeTypes | SerializedBlockNode<CodeBlock>
+type NodeTypes = DefaultNodeTypes | SerializedBlockNode<CodeBlock> | SerializedExcalidrawNode
 
 const converters: JSXConvertersFunction<NodeTypes> = ({ defaultConverters }) => ({
     ...defaultConverters,
     ...editorThemeConverters,
+    // Drawing: rendered only when it scrolls into view, expand button opens it full screen (view only)
+    excalidraw: ({ node }) => <ExcalidrawViewer data={node.data} />,
     blocks: {
         // Read-only code block: line numbers + syntax highlighting (highlight.js), no editor
         CodeBlock: ({ node }) => <CodeBlockView code={node.fields.code ?? ''} language={node.fields.language} />,
