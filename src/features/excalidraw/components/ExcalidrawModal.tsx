@@ -18,27 +18,16 @@ const ExcalidrawCanvas = dynamic(() => import('./ExcalidrawCanvas'), {
     ssr: false,
 })
 
-type BaseProps = {
+export type ExcalidrawModalProps = {
     initialScene: ExcalidrawScene
-    theme: 'dark' | 'light'
-}
-
-type EditProps = {
-    mode: 'edit'
     /** Close without saving */
     onCancel: () => void
     /** Remove the drawing from the note */
     onDelete: () => void
     /** `null` = the drawing is empty */
     onSave: (data: null | string) => void
-} & BaseProps
-
-type ViewProps = {
-    mode: 'view'
-    onClose: () => void
-} & BaseProps
-
-export type ExcalidrawModalProps = EditProps | ViewProps
+    theme: 'dark' | 'light'
+}
 
 /** True when Escape should be left to Excalidraw (finish a text or a line, close a menu / popup...) */
 const excalidrawUsesEscape = (api: ExcalidrawImperativeAPI | null) => {
@@ -66,12 +55,11 @@ const excalidrawUsesEscape = (api: ExcalidrawImperativeAPI | null) => {
 }
 
 /**
- * Full screen (100% width × 100% height) Excalidraw modal.
- * - `edit`: Cancel / Delete / Save. Cancel and Escape ask before discarding unsaved changes.
- * - `view`: read-only (view mode: pan and zoom only), Close.
+ * Full screen (100% width × 100% height) Excalidraw modal used to edit a drawing:
+ * Delete / Cancel / Save. Cancel and Escape ask before discarding unsaved changes.
  */
 export const ExcalidrawModal: React.FC<ExcalidrawModalProps> = (props) => {
-    const { initialScene, mode, theme } = props
+    const { initialScene, onDelete, theme } = props
     const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
     const baselineVersionRef = useRef<null | number>(null)
     const latestVersionRef = useRef<null | number>(null)
@@ -100,22 +88,14 @@ export const ExcalidrawModal: React.FC<ExcalidrawModalProps> = (props) => {
         baselineVersionRef.current !== null && latestVersionRef.current !== baselineVersionRef.current
 
     const requestClose = useCallback(() => {
-        const current = propsRef.current
-        if (current.mode === 'view') {
-            current.onClose()
-            return
-        }
         if (isDirty()) {
             setIsConfirmOpen(true)
         } else {
-            current.onCancel()
+            propsRef.current.onCancel()
         }
     }, [])
 
     const save = () => {
-        if (props.mode !== 'edit') {
-            return
-        }
         const api = apiRef.current
         if (!api) {
             // Excalidraw not loaded yet: nothing was drawn
@@ -170,9 +150,9 @@ export const ExcalidrawModal: React.FC<ExcalidrawModalProps> = (props) => {
 
     return createPortal(
         <div
-            aria-label={mode === 'edit' ? 'Edit drawing' : 'Drawing'}
+            aria-label="Edit drawing"
             aria-modal="true"
-            className={`ink-excalidraw-modal ink-excalidraw-modal--${mode}`}
+            className="ink-excalidraw-modal"
             data-theme={theme}
             onClick={stop}
             onFocus={stop}
@@ -182,33 +162,17 @@ export const ExcalidrawModal: React.FC<ExcalidrawModalProps> = (props) => {
             role="dialog"
         >
             <div className="ink-excalidraw-modal__header">
-                <span className="ink-excalidraw-modal__title">{mode === 'edit' ? 'Drawing' : 'Drawing (view only)'}</span>
+                <span className="ink-excalidraw-modal__title">Drawing</span>
                 <div className="ink-excalidraw-modal__actions">
-                    {props.mode === 'edit' ? (
-                        <>
-                            <button
-                                className="ink-excalidraw-btn ink-excalidraw-btn--danger"
-                                onClick={props.onDelete}
-                                type="button"
-                            >
-                                Delete
-                            </button>
-                            <button className="ink-excalidraw-btn" onClick={requestClose} type="button">
-                                Cancel
-                            </button>
-                            <button
-                                className="ink-excalidraw-btn ink-excalidraw-btn--primary"
-                                onClick={save}
-                                type="button"
-                            >
-                                Save
-                            </button>
-                        </>
-                    ) : (
-                        <button className="ink-excalidraw-btn" onClick={props.onClose} type="button">
-                            Close
-                        </button>
-                    )}
+                    <button className="ink-excalidraw-btn ink-excalidraw-btn--danger" onClick={onDelete} type="button">
+                        Delete
+                    </button>
+                    <button className="ink-excalidraw-btn" onClick={requestClose} type="button">
+                        Cancel
+                    </button>
+                    <button className="ink-excalidraw-btn ink-excalidraw-btn--primary" onClick={save} type="button">
+                        Save
+                    </button>
                 </div>
             </div>
             <div className="ink-excalidraw-modal__body">
@@ -217,10 +181,9 @@ export const ExcalidrawModal: React.FC<ExcalidrawModalProps> = (props) => {
                     onApiReady={onApiReady}
                     onSceneChange={onSceneChange}
                     theme={theme}
-                    viewMode={mode === 'view'}
                 />
             </div>
-            {isConfirmOpen && props.mode === 'edit' ? (
+            {isConfirmOpen ? (
                 <div className="ink-excalidraw-confirm" role="presentation">
                     <div
                         aria-describedby="ink-excalidraw-confirm-text"

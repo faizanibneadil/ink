@@ -17,10 +17,9 @@ export type ExcalidrawCanvasProps = {
     onApiReady?: (api: ExcalidrawImperativeAPI) => void
     onSceneChange?: (elements: readonly ExcalidrawElement[]) => void
     theme: 'dark' | 'light'
-    viewMode: boolean
 }
 
-const editUIOptions: Partial<UIOptions> = {
+const uiOptions: Partial<UIOptions> = {
     canvasActions: {
         // No file system / scene loading: the drawing is only saved in the note
         export: false,
@@ -32,18 +31,6 @@ const editUIOptions: Partial<UIOptions> = {
     tools: { image: false },
 }
 
-const viewUIOptions: Partial<UIOptions> = {
-    canvasActions: {
-        changeViewBackgroundColor: false,
-        clearCanvas: false,
-        export: false,
-        loadScene: false,
-        saveToActiveFile: false,
-        toggleTheme: false,
-    },
-    tools: { image: false },
-}
-
 const hasImageFile = (dataTransfer: DataTransfer | null) =>
     Array.from(dataTransfer?.items ?? []).some((item) => item.kind === 'file' && item.type.startsWith('image/'))
 
@@ -52,7 +39,6 @@ const ExcalidrawCanvas: React.FC<ExcalidrawCanvasProps> = ({
     onApiReady,
     onSceneChange,
     theme,
-    viewMode,
 }) => {
     const containerRef = useRef<HTMLDivElement>(null)
     const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
@@ -112,15 +98,14 @@ const ExcalidrawCanvas: React.FC<ExcalidrawCanvasProps> = ({
                 autoFocus
                 excalidrawAPI={handleApi}
                 initialData={{
-                    appState: { ...initialScene.appState, viewModeEnabled: viewMode },
+                    appState: initialScene.appState,
                     elements: initialScene.elements,
                     files: initialScene.files,
                 }}
                 onChange={onChange}
                 onPaste={onPaste}
                 theme={theme}
-                UIOptions={viewMode ? viewUIOptions : editUIOptions}
-                viewModeEnabled={viewMode}
+                UIOptions={uiOptions}
             />
         </div>
     )

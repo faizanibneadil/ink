@@ -65,9 +65,8 @@ figure.ink-excalidraw {
   font-size: 14px;
 }
 
-/* Edit / Delete buttons (editor) and expand button (note view), top right */
-.ink-excalidraw__toolbar,
-.ink-excalidraw__expand {
+/* Edit / Delete buttons (editor), top right of the drawing */
+.ink-excalidraw__toolbar {
   position: absolute;
   top: 8px;
   right: 8px;
@@ -83,38 +82,17 @@ figure.ink-excalidraw {
 .ink-excalidraw:hover .ink-excalidraw__toolbar,
 .ink-excalidraw:focus-within .ink-excalidraw__toolbar,
 .ink-excalidraw--selected .ink-excalidraw__toolbar,
-.ink-excalidraw--empty .ink-excalidraw__toolbar,
-.ink-excalidraw:hover .ink-excalidraw__expand,
-.ink-excalidraw__expand:focus-visible {
+.ink-excalidraw--empty .ink-excalidraw__toolbar {
   opacity: 1;
 }
 
 /* Touch screens have no hover: always show the buttons */
 @media (hover: none) {
-  .ink-excalidraw__toolbar,
-  .ink-excalidraw__expand {
+  .ink-excalidraw__toolbar {
     opacity: 1;
   }
 }
 
-.ink-excalidraw__expand {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 1px solid var(--color-border, #ddd);
-  border-radius: 6px;
-  background: var(--color-bg, #fff);
-  color: var(--color-text, #222);
-  cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-}
-
-.ink-excalidraw__expand:hover {
-  background: var(--color-bg-hover, #f4f4f4);
-}
 
 /* ---------- Buttons ---------- */
 

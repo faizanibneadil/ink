@@ -176,7 +176,6 @@ export const ExcalidrawComponent: React.FC<Props> = ({ data, nodeKey }) => {
             {isEditable && isModalOpen ? (
                 <ExcalidrawModal
                     initialScene={scene}
-                    mode="edit"
                     onCancel={onCancel}
                     onDelete={onDelete}
                     onSave={onSave}
