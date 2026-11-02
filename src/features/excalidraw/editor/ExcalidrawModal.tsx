@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
-import { type ExcalidrawScene, getSceneVersion, serializeScene } from '../scene'
+import { type ExcalidrawScene, getSceneVersion, serializeScene } from '../shared/scene'
 
 const ExcalidrawCanvas = dynamic(() => import('./ExcalidrawCanvas'), {
     loading: () => (

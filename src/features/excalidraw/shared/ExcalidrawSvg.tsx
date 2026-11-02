@@ -7,7 +7,7 @@ import './excalidraw-assets'
 import { exportToSvg } from '@excalidraw/excalidraw'
 import React, { useEffect, useRef, useState } from 'react'
 
-import { EXPORT_PADDING, type ExcalidrawScene } from '../scene'
+import { EXPORT_PADDING, type ExcalidrawScene } from './scene'
 
 export type ExcalidrawSvgProps = {
     onRendered?: () => void

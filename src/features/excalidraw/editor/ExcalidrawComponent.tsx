@@ -18,13 +18,13 @@ import { useLexicalNodeSelection } from '@payloadcms/richtext-lexical/lexical/re
 import { useTheme } from '@payloadcms/ui'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { clearOpenOnMount, shouldOpenOnMount } from '../openOnMount'
-import { $isExcalidrawNode } from '../nodes/ExcalidrawNode'
-import { parseScene } from '../scene'
+import { clearOpenOnMount, shouldOpenOnMount } from '../client/openOnMount'
+import { $isExcalidrawNode } from '../client/ExcalidrawNode'
+import { parseScene } from '../shared/scene'
 import { ExcalidrawModal } from './ExcalidrawModal'
-import { ExcalidrawPreview } from './ExcalidrawPreview'
+import { ExcalidrawPreview } from '../shared/ExcalidrawPreview'
 
-import '../excalidraw.css'
+import '../shared/excalidraw.css'
 
 type Props = {
     data: string

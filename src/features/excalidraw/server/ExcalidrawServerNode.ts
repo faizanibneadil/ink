@@ -10,7 +10,7 @@ import type React from 'react'
 
 import { $applyNodeReplacement, createCommand, DecoratorNode } from '@payloadcms/richtext-lexical/lexical'
 
-import { EMPTY_SCENE_DATA } from '../scene'
+import { EMPTY_SCENE_DATA } from '../shared/scene'
 
 export const EXCALIDRAW_NODE_TYPE = 'excalidraw'
 

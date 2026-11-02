@@ -3,10 +3,10 @@
 import { useTheme } from '@payloadcms/ui'
 import React, { useMemo } from 'react'
 
-import { parseScene } from '../scene'
-import { ExcalidrawPreview } from './ExcalidrawPreview'
+import { parseScene } from '../shared/scene'
+import { ExcalidrawPreview } from '../shared/ExcalidrawPreview'
 
-import '../excalidraw.css'
+import '../shared/excalidraw.css'
 
 /**
  * Read-only note view of a drawing: view only, rendered as an SVG once it scrolls into view.

@@ -1,9 +1,9 @@
 /**
- * Syntax highlighting for the read-only CodeBlock (src/views/note-viewer.tsx).
+ * Syntax highlighting for the read-only CodeBlock (./CodeBlockView.tsx).
  *
- * highlight.js core with only the grammars for the languages in src/blocks/code/languages.ts, so the
+ * highlight.js core with only the grammars for the languages in ../shared/languages.ts, so the
  * bundle stays small. It is synchronous, so the highlighted code is already in the server-rendered HTML.
- * Colours come from note-viewer.css (`.hljs-*` classes), for light and dark theme.
+ * Colours come from code-block-viewer.css (`.hljs-*` classes), for light and dark theme.
  */
 import type { LanguageFn } from 'highlight.js'
 
@@ -49,7 +49,7 @@ import vbnet from 'highlight.js/lib/languages/vbnet'
 import xml from 'highlight.js/lib/languages/xml'
 import yaml from 'highlight.js/lib/languages/yaml'
 
-import type { CodeLanguage } from '@/blocks/code/languages'
+import type { CodeLanguage } from '../shared/languages'
 
 const grammars: Record<string, LanguageFn> = {
     bash, c, cpp, csharp, css, dart, dockerfile, dos, elixir, go, graphql, handlebars, ini, java, javascript,

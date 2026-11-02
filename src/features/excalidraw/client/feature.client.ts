@@ -7,9 +7,9 @@ import {
 } from '@payloadcms/richtext-lexical/client'
 import { $isNodeSelection } from '@payloadcms/richtext-lexical/lexical'
 
-import { DrawingIcon } from './icon'
-import { $isExcalidrawNode, ExcalidrawNode } from './nodes/ExcalidrawNode'
-import { INSERT_EXCALIDRAW_COMMAND } from './nodes/ExcalidrawServerNode'
+import { DrawingIcon } from '../shared/icon'
+import { $isExcalidrawNode, ExcalidrawNode } from './ExcalidrawNode'
+import { INSERT_EXCALIDRAW_COMMAND } from '../server/ExcalidrawServerNode'
 import { ExcalidrawPlugin } from './plugin'
 
 export const ExcalidrawFeatureClient = createClientFeature({

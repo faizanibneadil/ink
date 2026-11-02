@@ -62,21 +62,22 @@ export type SupportedTimezones =
   | 'Pacific/Fiji';
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "LexicalNodes_31D53ABE".
+ * via the `definition` "LexicalNodes_72473AD2".
  */
-export type LexicalNodes_31D53ABE =
+export type LexicalNodes_72473AD2 =
   | SerializedTextNode
   | SerializedTabNode
   | SerializedLineBreakNode
-  | SerializedParagraphNode<LexicalNodes_31D53ABE>
+  | SerializedParagraphNode<LexicalNodes_72473AD2>
+  | SerializedCodeBlockNode
   | SerializedExcalidrawNode
-  | SerializedTableNode<LexicalNodes_31D53ABE>
-  | SerializedTableCellNode<LexicalNodes_31D53ABE>
-  | SerializedTableRowNode<LexicalNodes_31D53ABE>
+  | SerializedTableNode<LexicalNodes_72473AD2>
+  | SerializedTableCellNode<LexicalNodes_72473AD2>
+  | SerializedTableRowNode<LexicalNodes_72473AD2>
   | SerializedBlockNode<CodeBlock>
   | SerializedHorizontalRuleNode
   | SerializedUploadNode<'media'>
-  | SerializedQuoteNode<LexicalNodes_31D53ABE>
+  | SerializedQuoteNode<LexicalNodes_72473AD2>
   | SerializedRelationshipNode<
       | 'users'
       | 'folders'
@@ -87,11 +88,11 @@ export type LexicalNodes_31D53ABE =
       | 'payload-preferences'
       | 'payload-migrations'
     >
-  | SerializedAutoLinkNode<LexicalNodes_31D53ABE, LexicalLinkFields>
-  | SerializedLinkNode<LexicalNodes_31D53ABE, LexicalLinkFields>
-  | SerializedListNode<LexicalNodes_31D53ABE>
-  | SerializedListItemNode<LexicalNodes_31D53ABE>
-  | SerializedHeadingNode<LexicalNodes_31D53ABE>;
+  | SerializedAutoLinkNode<LexicalNodes_72473AD2, LexicalLinkFields>
+  | SerializedLinkNode<LexicalNodes_72473AD2, LexicalLinkFields>
+  | SerializedListNode<LexicalNodes_72473AD2>
+  | SerializedListItemNode<LexicalNodes_72473AD2>
+  | SerializedHeadingNode<LexicalNodes_72473AD2>;
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "LexicalNodes_3DE324E4".
@@ -361,7 +362,7 @@ export interface Tag {
  */
 export interface Note {
   id: number;
-  note?: LexicalRichText<LexicalNodes_31D53ABE> | null;
+  note?: LexicalRichText<LexicalNodes_72473AD2> | null;
   slug: string;
   createdBy?: {
     relationTo: 'users';
@@ -850,6 +851,13 @@ export interface SerializedParagraphNode<TChildren> extends SerializedLexicalEle
   type: 'paragraph';
   textFormat: number;
   textStyle: string;
+}
+
+export interface SerializedCodeBlockNode {
+  type: 'code-block';
+  code: string;
+  language: string;
+  version: number;
 }
 
 export interface SerializedExcalidrawNode {

@@ -1,6 +1,6 @@
 import { createNode, createServerFeature } from '@payloadcms/richtext-lexical'
 
-import { EXCALIDRAW_NODE_TYPE, ExcalidrawServerNode } from './nodes/ExcalidrawServerNode'
+import { EXCALIDRAW_NODE_TYPE, ExcalidrawServerNode } from './ExcalidrawServerNode'
 
 /** Must stay in sync with `SerializedExcalidrawNode` in ./nodes/ExcalidrawServerNode.ts */
 const SERIALIZED_EXCALIDRAW_NODE_TS = `export interface SerializedExcalidrawNode {
@@ -16,7 +16,7 @@ const SERIALIZED_EXCALIDRAW_NODE_TS = `export interface SerializedExcalidrawNode
  */
 export const ExcalidrawFeature = createServerFeature({
     feature: {
-        ClientFeature: '@/features/excalidraw/feature.client#ExcalidrawFeatureClient',
+        ClientFeature: '@/features/excalidraw/client/feature.client#ExcalidrawFeatureClient',
         i18n: {
             en: {
                 label: 'Drawing',

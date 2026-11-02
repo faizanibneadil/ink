@@ -1,7 +1,8 @@
 import { BlocksFeature, FixedToolbarFeature, TableFeature, lexicalEditor } from "@payloadcms/richtext-lexical";
 import { CollectionConfig } from "payload";
 
-import { ExcalidrawFeature } from "@/features/excalidraw/feature.server";
+import { CodeBlockFeature } from "@/features/code-block";
+import { ExcalidrawFeature } from "@/features/excalidraw";
 
 import { slugifyNote } from "./note-slug";
 
@@ -22,7 +23,7 @@ export const Notes: CollectionConfig = {
             features: ({ rootFeatures }) => {
                 return [...rootFeatures, BlocksFeature({
                     blocks: ['CodeBlock']
-                }), FixedToolbarFeature(), TableFeature(), ExcalidrawFeature()]
+                }), FixedToolbarFeature(), TableFeature(), ExcalidrawFeature(), CodeBlockFeature()]
             },
             views: "@/views/config.tsx#views"
         })

@@ -5,12 +5,12 @@ import type { LexicalNode } from '@payloadcms/richtext-lexical/lexical'
 import { $applyNodeReplacement } from '@payloadcms/richtext-lexical/lexical'
 import React from 'react'
 
-import { EMPTY_SCENE_DATA } from '../scene'
-import { ExcalidrawServerNode, type SerializedExcalidrawNode } from './ExcalidrawServerNode'
+import { EMPTY_SCENE_DATA } from '../shared/scene'
+import { ExcalidrawServerNode, type SerializedExcalidrawNode } from '../server/ExcalidrawServerNode'
 
 // Loaded only when a drawing node is in the editor
 const ExcalidrawComponent = React.lazy(() =>
-    import('../components/ExcalidrawComponent').then((module) => ({ default: module.ExcalidrawComponent })),
+    import('../editor/ExcalidrawComponent').then((module) => ({ default: module.ExcalidrawComponent })),
 )
 
 /** Client (editor) version of the node: renders the drawing with Edit / Delete buttons. */
