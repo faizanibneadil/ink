@@ -10,15 +10,22 @@ const Editor = React.lazy(() => import("./editor").then(module => ({
 })))
 
 export const Note: React.FC<AdminViewServerProps> = async ({ params, payload, user }) => {
-    const id = params?.segments?.[1]
+    // /admin/tack/<slug>
+    const slug = params?.segments?.[1]
 
-    if (!id) {
+    if (!slug) {
         return 'Note is null'
     }
 
     let note: NoteType | null = null
     try {
-        note = await payload.findByID({ collection: 'notes', id })
+        const { docs } = await payload.find({
+            collection: 'notes',
+            limit: 1,
+            pagination: false,
+            where: { slug: { equals: slug } },
+        })
+        note = docs[0] ?? null
     } catch {
         // not found
     }
