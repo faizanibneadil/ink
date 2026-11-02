@@ -3,22 +3,18 @@
 import type {
     DefaultNodeTypes,
     DefaultTypedEditorState,
-    SerializedBlockNode,
     SerializedListItemNode,
     SerializedListNode,
 } from '@payloadcms/richtext-lexical'
 import type { JSXConverters, JSXConvertersFunction } from '@payloadcms/richtext-lexical/react'
-import type { CodeBlock, Note } from '@/payload-types'
+import type { Note } from '@/payload-types'
 
 import { RichText } from '@payloadcms/richtext-lexical/react'
-import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { codeLanguages } from '@/blocks/code/languages'
-import { ExcalidrawViewer } from '@/features/excalidraw/components/ExcalidrawViewer'
-import type { SerializedExcalidrawNode } from '@/features/excalidraw/nodes/ExcalidrawServerNode'
+import { codeBlockConverters, type CodeBlockViewerNodeTypes } from '@/features/code-block/viewer/converter'
+import { excalidrawConverters, type ExcalidrawViewerNodeTypes } from '@/features/excalidraw/viewer/converter'
 
 import { views } from './config'
-import { highlightLines } from './highlight'
 
 // Notion-style read-only styles. Only styles elements inside `.note-page` / `.note-view`.
 import './note-viewer.css'
@@ -160,98 +156,14 @@ const editorThemeConverters: JSXConverters<DefaultNodeTypes> = {
     },
 }
 
-const copyText = async (text: string) => {
-    if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text)
-        return
-    }
-    // Fallback for browsers / insecure contexts without the async clipboard API
-    const textarea = document.createElement('textarea')
-    textarea.value = text
-    textarea.setAttribute('readonly', '')
-    textarea.style.position = 'fixed'
-    textarea.style.opacity = '0'
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    textarea.remove()
-}
+type NodeTypes = DefaultNodeTypes | CodeBlockViewerNodeTypes | ExcalidrawViewerNodeTypes
 
-const CopyIcon = () => (
-    <svg aria-hidden="true" fill="none" height="14" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" viewBox="0 0 24 24" width="14">
-        <rect height="13" rx="2" width="13" x="9" y="9" />
-        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-    </svg>
-)
-
-const CheckIcon = () => (
-    <svg aria-hidden="true" fill="none" height="14" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="14">
-        <path d="M20 6 9 17l-5-5" />
-    </svg>
-)
-
-const CodeBlockView: React.FC<{ code: string, language?: null | string }> = ({ code, language }) => {
-    const [copied, setCopied] = useState(false)
-    const timeout = useRef<ReturnType<typeof setTimeout>>(undefined)
-    const lines = useMemo(() => highlightLines(code, language), [code, language])
-    const label = language ? codeLanguages[language as keyof typeof codeLanguages] ?? language : ''
-
-    useEffect(() => () => clearTimeout(timeout.current), [])
-
-    const onCopy = async () => {
-        try {
-            await copyText(code)
-            setCopied(true)
-            clearTimeout(timeout.current)
-            timeout.current = setTimeout(() => setCopied(false), 2000)
-        } catch {
-            // Clipboard blocked: leave the button as it is
-        }
-    }
-
-    return (
-        <div className="note-view__codeblock">
-            <div className="note-view__codeblock-header">
-                <span className="note-view__codeblock-lang">
-                    {label}
-                </span>
-                <button
-                    aria-label={copied ? 'Copied' : 'Copy code'}
-                    className={cx('note-view__codeblock-copy', copied && 'note-view__codeblock-copy--copied')}
-                    onClick={onCopy}
-                    type="button"
-                >
-                    {copied ? <CheckIcon /> : <CopyIcon />}
-                    <span>{copied ? 'Copied' : 'Copy'}</span>
-                </button>
-            </div>
-            {/* One element per line: CSS adds the line numbers (not selectable, not copied) */}
-            <pre
-                className="note-view__codeblock-pre"
-                style={{ '--note-line-digits': String(lines.length).length } as React.CSSProperties}
-            >
-                <code className="hljs">
-                    {lines.map((line, index) => (
-                        // highlight.js output: only <span class="hljs-*"> and escaped text
-                        <span className="note-view__code-line" dangerouslySetInnerHTML={{ __html: line }} key={index} />
-                    ))}
-                </code>
-            </pre>
-        </div>
-    )
-}
-
-type NodeTypes = DefaultNodeTypes | SerializedBlockNode<CodeBlock> | SerializedExcalidrawNode
-
+// Each feature brings its own read-only converters (src/features/<feature>/viewer/converter.tsx)
 const converters: JSXConvertersFunction<NodeTypes> = ({ defaultConverters }) => ({
     ...defaultConverters,
     ...editorThemeConverters,
-    // Drawing: rendered only when it scrolls into view, expand button opens it full screen (view only)
-    excalidraw: ({ node }) => <ExcalidrawViewer data={node.data} />,
-    blocks: {
-        // Read-only code block: line numbers + syntax highlighting (highlight.js), no editor
-        CodeBlock: ({ node }) => <CodeBlockView code={node.fields.code ?? ''} language={node.fields.language} />,
-    },
+    ...excalidrawConverters,
+    ...codeBlockConverters,
 })
 
 export const NoteViewer: React.FC<{ note: Note['note'] }> = ({ note }) => {

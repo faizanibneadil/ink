@@ -13,8 +13,8 @@ import { $insertNodeToNearestRoot } from '@payloadcms/richtext-lexical/lexical/u
 import { useEffect } from 'react'
 
 import { markOpenOnMount } from './openOnMount'
-import { $createExcalidrawNode, ExcalidrawNode } from './nodes/ExcalidrawNode'
-import { INSERT_EXCALIDRAW_COMMAND } from './nodes/ExcalidrawServerNode'
+import { $createExcalidrawNode, ExcalidrawNode } from './ExcalidrawNode'
+import { INSERT_EXCALIDRAW_COMMAND } from '../server/ExcalidrawServerNode'
 
 /** Registers INSERT_EXCALIDRAW_COMMAND: inserts an empty drawing and opens the drawing modal. */
 export const ExcalidrawPlugin: PluginComponent = () => {

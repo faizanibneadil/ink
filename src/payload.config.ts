@@ -16,7 +16,7 @@ import { Media } from './collections/Media'
 import { Folders } from './collections/Folders'
 import { Tags } from './collections/Tags'
 import { Notes } from './collections/notes'
-import { codeLanguages } from './blocks/code/languages'
+import { codeLanguages } from './features/code-block'
 import { Settings } from './globals/settings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -83,7 +83,9 @@ export default buildConfig({
   blocks: [CodeBlock({
     defaultLanguage: "ts",
     fieldOverrides: {
-      slug: "CodeBlock"
+      slug: "CodeBlock",
+      // Legacy block, replaced by the native Code Block feature (src/features/code-block)
+      labels: { singular: "Code (Legacy)", plural: "Code (Legacy)" },
     },
     // Popular languages, shared with the read-only note view (syntax highlighting)
     languages: codeLanguages

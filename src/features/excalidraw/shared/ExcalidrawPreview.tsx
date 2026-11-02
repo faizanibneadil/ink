@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 
-import { EXPORT_PADDING, type ExcalidrawScene, getSceneSize } from '../scene'
+import { EXPORT_PADDING, type ExcalidrawScene, getSceneSize } from './scene'
 
 // Excalidraw (and its export code) is only downloaded when a drawing becomes visible
 const ExcalidrawSvg = dynamic(() => import('./ExcalidrawSvg'), { ssr: false })

@@ -1,7 +1,7 @@
 'use client'
 
 // Only loaded in the browser, through next/dynamic({ ssr: false }) in ExcalidrawModal.
-import './excalidraw-assets'
+import '../shared/excalidraw-assets'
 import '@excalidraw/excalidraw/index.css'
 
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types'
@@ -10,7 +10,7 @@ import type { AppState, ExcalidrawImperativeAPI, UIOptions } from '@excalidraw/e
 import { Excalidraw } from '@excalidraw/excalidraw'
 import React, { useCallback, useEffect, useRef } from 'react'
 
-import type { ExcalidrawScene } from '../scene'
+import type { ExcalidrawScene } from '../shared/scene'
 
 export type ExcalidrawCanvasProps = {
     initialScene: ExcalidrawScene
