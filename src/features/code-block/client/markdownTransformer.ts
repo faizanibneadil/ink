@@ -12,10 +12,8 @@ import { markFocusOnMount } from './focusOnMount'
  * language, e.g. ```ts or ```python) and press Space or Enter, the line becomes a code block.
  * An unknown language falls back to the default language.
  *
- * It is a multiline transformer, like the one of the legacy Payload `CodeBlock` block: on Enter,
- * Lexical runs multiline transformers first, in the order Payload loaded the features. Payload loads
- * features in reverse order, so `CodeBlockFeature` is listed after `BlocksFeature` in the collection
- * and ``` creates this code block, not the legacy block.
+ * It is a multiline transformer, so it also runs on Enter (Lexical runs multiline transformers on
+ * Enter before element transformers).
  *
  * Markdown import (```lang ... ```) and export also go through this transformer.
  */

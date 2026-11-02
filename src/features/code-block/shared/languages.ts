@@ -2,12 +2,11 @@
  * Languages of the code block, shared by:
  * - the native Code Block (../editor/CodeBlockComponent.tsx): the language dropdown and the Monaco
  *   language (see `toMonacoLanguage`).
- * - the legacy Payload `CodeBlock` block (src/payload.config.ts): its language picker.
  * - the read-only note view (../viewer): the label above the code and the highlight.js grammar
  *   (see `highlightLanguages` in ../viewer/highlight.ts).
  *
  * Keys are Monaco language ids (https://github.com/microsoft/monaco-editor/tree/main/src/basic-languages),
- * except `js`, `jsx`, `ts` and `tsx`, kept as they were so code blocks saved before keep their language.
+ * except the short `js`, `jsx`, `ts` and `tsx` keys (mapped to Monaco ids by `toMonacoLanguage`).
  */
 export const codeLanguages = {
     plaintext: 'Plain Text',

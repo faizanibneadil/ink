@@ -1,4 +1,4 @@
-import { BlocksFeature, FixedToolbarFeature, TableFeature, lexicalEditor } from "@payloadcms/richtext-lexical";
+import { FixedToolbarFeature, TableFeature, lexicalEditor } from "@payloadcms/richtext-lexical";
 import { CollectionConfig } from "payload";
 
 import { CodeBlockFeature } from "@/features/code-block";
@@ -23,14 +23,9 @@ export const Notes: CollectionConfig = {
             features: ({ rootFeatures }) => {
                 return [
                     ...rootFeatures,
-                    BlocksFeature({
-                        blocks: ['CodeBlock']
-                    }),
                     FixedToolbarFeature(),
                     TableFeature(),
                     ExcalidrawFeature(),
-                    // Keep after BlocksFeature: Payload loads features in reverse order, so the ```
-                    // shortcut of the native code block runs before the legacy CodeBlock block's.
                     CodeBlockFeature(),
                 ]
             },
