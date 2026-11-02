@@ -17,6 +17,8 @@ export const CODE_BLOCK_NODE_TYPE = 'code-block'
 export type SerializedCodeBlockNode = Spread<
     {
         code: string
+        /** Optional file name shown in the block header (e.g. `app.tsx`), empty when not set */
+        filename?: string
         /** Key of `codeLanguages` (../shared/languages.ts) */
         language: string
         type: typeof CODE_BLOCK_NODE_TYPE
@@ -26,6 +28,7 @@ export type SerializedCodeBlockNode = Spread<
 
 export type InsertCodeBlockPayload = {
     code?: string
+    filename?: string
     language?: CodeLanguage
 }
 
@@ -35,23 +38,25 @@ export const INSERT_CODE_BLOCK_COMMAND: LexicalCommand<InsertCodeBlockPayload | 
 const toLanguage = (value: unknown): CodeLanguage => (isCodeLanguage(value) ? value : DEFAULT_CODE_LANGUAGE)
 
 /**
- * Native code block node: `{ code, language }` saved inline in the rich text JSON (no Payload block,
+ * Native code block node: `{ code, language, filename }` saved inline in the rich text JSON (no Payload block,
  * no form state, no server request). Renders nothing (`decorate()` returns null), so it can be used on
  * the server (validation, hooks, HTML / headless conversion).
  * The client editor uses `CodeBlockNode`, which extends this class and renders the Monaco editor.
  */
 export class CodeBlockServerNode extends DecoratorNode<null | React.ReactElement> {
     __code: string
+    __filename: string
     __language: CodeLanguage
 
-    constructor(code: string = '', language: CodeLanguage = DEFAULT_CODE_LANGUAGE, key?: NodeKey) {
+    constructor(code: string = '', language: CodeLanguage = DEFAULT_CODE_LANGUAGE, filename: string = '', key?: NodeKey) {
         super(key)
         this.__code = code
         this.__language = language
+        this.__filename = filename
     }
 
     static clone(node: CodeBlockServerNode): CodeBlockServerNode {
-        return new this(node.__code, node.__language, node.__key)
+        return new this(node.__code, node.__language, node.__filename, node.__key)
     }
 
     static getType(): string {
@@ -61,6 +66,7 @@ export class CodeBlockServerNode extends DecoratorNode<null | React.ReactElement
     static importJSON(serializedNode: SerializedCodeBlockNode): CodeBlockServerNode {
         return $createCodeBlockServerNode({
             code: typeof serializedNode.code === 'string' ? serializedNode.code : '',
+            filename: typeof serializedNode.filename === 'string' ? serializedNode.filename : '',
             language: toLanguage(serializedNode.language),
         })
     }
@@ -80,6 +86,7 @@ export class CodeBlockServerNode extends DecoratorNode<null | React.ReactElement
             ...super.exportJSON(),
             type: CODE_BLOCK_NODE_TYPE,
             code: this.getCode(),
+            filename: this.getFilename(),
             language: this.getLanguage(),
             version: 1,
         }
@@ -87,6 +94,10 @@ export class CodeBlockServerNode extends DecoratorNode<null | React.ReactElement
 
     getCode(): string {
         return this.getLatest().__code
+    }
+
+    getFilename(): string {
+        return this.getLatest().__filename
     }
 
     getLanguage(): CodeLanguage {
@@ -106,6 +117,11 @@ export class CodeBlockServerNode extends DecoratorNode<null | React.ReactElement
         writable.__code = code
     }
 
+    setFilename(filename: string): void {
+        const writable = this.getWritable()
+        writable.__filename = filename
+    }
+
     setLanguage(language: CodeLanguage): void {
         const writable = this.getWritable()
         writable.__language = language
@@ -116,8 +132,8 @@ export class CodeBlockServerNode extends DecoratorNode<null | React.ReactElement
     }
 }
 
-export function $createCodeBlockServerNode({ code, language }: InsertCodeBlockPayload = {}): CodeBlockServerNode {
-    return $applyNodeReplacement(new CodeBlockServerNode(code, language))
+export function $createCodeBlockServerNode({ code, filename, language }: InsertCodeBlockPayload = {}): CodeBlockServerNode {
+    return $applyNodeReplacement(new CodeBlockServerNode(code, language, filename))
 }
 
 export function $isCodeBlockServerNode(node: LexicalNode | null | undefined): node is CodeBlockServerNode {

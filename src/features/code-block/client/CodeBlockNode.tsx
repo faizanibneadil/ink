@@ -20,7 +20,7 @@ const CodeBlockComponent = React.lazy(() =>
 /** Client (editor) version of the node: renders the code block with the Monaco editor. */
 export class CodeBlockNode extends CodeBlockServerNode {
     static clone(node: CodeBlockNode): CodeBlockNode {
-        return new CodeBlockNode(node.__code, node.__language, node.__key)
+        return new CodeBlockNode(node.__code, node.__language, node.__filename, node.__key)
     }
 
     static getType(): string {
@@ -30,12 +30,20 @@ export class CodeBlockNode extends CodeBlockServerNode {
     static importJSON(serializedNode: SerializedCodeBlockNode): CodeBlockNode {
         return $createCodeBlockNode({
             code: typeof serializedNode.code === 'string' ? serializedNode.code : '',
+            filename: typeof serializedNode.filename === 'string' ? serializedNode.filename : '',
             language: isCodeLanguage(serializedNode.language) ? serializedNode.language : DEFAULT_CODE_LANGUAGE,
         })
     }
 
     decorate(): React.ReactElement {
-        return <CodeBlockComponent code={this.__code} language={this.__language} nodeKey={this.getKey()} />
+        return (
+            <CodeBlockComponent
+                code={this.__code}
+                filename={this.__filename}
+                language={this.__language}
+                nodeKey={this.getKey()}
+            />
+        )
     }
 
     exportJSON(): SerializedCodeBlockNode {
@@ -43,8 +51,8 @@ export class CodeBlockNode extends CodeBlockServerNode {
     }
 }
 
-export function $createCodeBlockNode({ code, language }: InsertCodeBlockPayload = {}): CodeBlockNode {
-    return $applyNodeReplacement(new CodeBlockNode(code, language))
+export function $createCodeBlockNode({ code, filename, language }: InsertCodeBlockPayload = {}): CodeBlockNode {
+    return $applyNodeReplacement(new CodeBlockNode(code, language, filename))
 }
 
 export function $isCodeBlockNode(node: LexicalNode | null | undefined): node is CodeBlockNode {

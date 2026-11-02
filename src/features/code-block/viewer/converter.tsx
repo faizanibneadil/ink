@@ -14,7 +14,9 @@ export type CodeBlockViewerNodeTypes = SerializedBlockNode<CodeBlock> | Serializ
  * `CodeBlock` block both render with the same Notion-style `CodeBlockView`.
  */
 export const codeBlockConverters: JSXConverters<CodeBlockViewerNodeTypes> = {
-    'code-block': ({ node }) => <CodeBlockView code={node.code ?? ''} language={node.language} />,
+    'code-block': ({ node }) => (
+        <CodeBlockView code={node.code ?? ''} filename={node.filename} language={node.language} />
+    ),
     blocks: {
         // Legacy block ("Code (Legacy)"), kept until it is removed
         CodeBlock: ({ node }) => <CodeBlockView code={node.fields.code ?? ''} language={node.fields.language} />,

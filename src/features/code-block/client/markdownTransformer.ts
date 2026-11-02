@@ -1,4 +1,4 @@
-import type { ElementTransformer } from '@payloadcms/richtext-lexical/lexical/markdown'
+import type { MultilineElementTransformer } from '@payloadcms/richtext-lexical/lexical/markdown'
 
 import { $createParagraphNode } from '@payloadcms/richtext-lexical/lexical'
 
@@ -11,10 +11,16 @@ import { markFocusOnMount } from './focusOnMount'
  * ``` markdown shortcut (like the Lexical playground): on a new line type ``` (optionally with a
  * language, e.g. ```ts or ```python) and press Space or Enter, the line becomes a code block.
  * An unknown language falls back to the default language.
- * Markdown export: ```<language>\n<code>\n```
+ *
+ * It is a multiline transformer, like the one of the legacy Payload `CodeBlock` block: on Enter,
+ * Lexical runs multiline transformers first, in the order Payload loaded the features. Payload loads
+ * features in reverse order, so `CodeBlockFeature` is listed after `BlocksFeature` in the collection
+ * and ``` creates this code block, not the legacy block.
+ *
+ * Markdown import (```lang ... ```) and export also go through this transformer.
  */
-export const CODE_BLOCK_MARKDOWN_TRANSFORMER: ElementTransformer = {
-    type: 'element',
+export const CODE_BLOCK_MARKDOWN_TRANSFORMER: MultilineElementTransformer = {
+    type: 'multiline-element',
     dependencies: [CodeBlockServerNode],
     export: (node) => {
         if (!$isCodeBlockServerNode(node)) {
@@ -22,16 +28,33 @@ export const CODE_BLOCK_MARKDOWN_TRANSFORMER: ElementTransformer = {
         }
         return '```' + node.getLanguage() + '\n' + node.getCode() + '\n```'
     },
-    regExp: /^```([^\s`]*)\s?$/,
-    replace: (parentNode, _children, match) => {
-        const language = findCodeLanguage(match[1] ?? '') ?? DEFAULT_CODE_LANGUAGE
+    regExpEnd: {
+        optional: true,
+        regExp: /[ \t]*```$/,
+    },
+    regExpStart: /^[ \t]*```([^\s`]*)\s?/,
+    replace: (rootNode, _children, startMatch, _endMatch, linesInBetween, isImport) => {
+        const language = findCodeLanguage(startMatch[1] ?? '') ?? DEFAULT_CODE_LANGUAGE
+
+        if (isImport) {
+            const lines = [...(linesInBetween ?? [])]
+            if (lines[0] === '') {
+                lines.shift()
+            }
+            if (lines[lines.length - 1] === '') {
+                lines.pop()
+            }
+            rootNode.append($createCodeBlockNode({ code: lines.join('\n'), language }))
+            return
+        }
+
+        // Typed in the editor: the ``` line becomes an empty code block with the cursor in it
         const node = $createCodeBlockNode({ language })
         markFocusOnMount(node.getKey())
-        parentNode.replace(node)
+        rootNode.replace(node)
         // Keep a line below the code block, so the user can continue writing after it
         if (!node.getNextSibling()) {
             node.insertAfter($createParagraphNode())
         }
     },
-    triggerOnEnter: true,
 }

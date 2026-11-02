@@ -7,6 +7,7 @@ import { CODE_BLOCK_NODE_TYPE, CodeBlockServerNode } from './CodeBlockServerNode
 const SERIALIZED_CODE_BLOCK_NODE_TS = `export interface SerializedCodeBlockNode {
   type: 'code-block';
   code: string;
+  filename?: string;
   language: string;
   version: number;
 }`
@@ -34,6 +35,7 @@ export const CodeBlockFeature = createServerFeature({
                         properties: {
                             type: { type: 'string', const: CODE_BLOCK_NODE_TYPE },
                             code: { type: 'string' },
+                            filename: { type: 'string' },
                             language: { type: 'string', enum: Object.keys(codeLanguages) },
                             version: { type: 'integer' },
                         },

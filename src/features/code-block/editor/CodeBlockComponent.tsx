@@ -16,12 +16,12 @@ import {
     PopupList,
     useTranslation,
 } from '@payloadcms/ui'
-import React, { useCallback, useId, useMemo, useState } from 'react'
+import React, { useCallback, useId, useMemo } from 'react'
 
 import { $isCodeBlockNode } from '../client/CodeBlockNode'
 import { takeFocusOnMount } from '../client/focusOnMount'
 import { type CodeLanguage, codeLanguages, toMonacoLanguage } from '../shared/languages'
-import { CodeBlockIcon, CollapseIcon, ExpandIcon } from '../shared/icons'
+import { CodeBlockIcon } from '../shared/icons'
 
 import './code-block-editor.css'
 
@@ -29,6 +29,7 @@ const baseClass = 'ink-code-block'
 
 type Props = {
     code: string
+    filename: string
     language: CodeLanguage
     nodeKey: NodeKey
 }
@@ -57,16 +58,14 @@ const configureMonaco = (monaco: Monaco) => {
 }
 
 /**
- * Editor view of the native code block. Looks like Payload's own code block (header with language
- * dropdown, copy, collapse / expand and remove; Monaco editor below) but the code and language are
+ * Editor view of the native code block. Looks like Payload's own code block (header with file name,
+ * language dropdown, copy and remove; Monaco editor below) but the code, language and file name are
  * written straight into the Lexical node: no block form state, no server request.
  */
-export const CodeBlockComponent: React.FC<Props> = ({ code, language, nodeKey }) => {
+export const CodeBlockComponent: React.FC<Props> = ({ code, filename, language, nodeKey }) => {
     const [editor] = useLexicalComposerContext()
     const isEditable = useLexicalEditable()
     const { t } = useTranslation()
-    // Not saved: every code block opens expanded
-    const [isCollapsed, setIsCollapsed] = useState(false)
     const instanceId = useId()
 
     const monacoLanguage = toMonacoLanguage(language)
@@ -88,6 +87,18 @@ export const CodeBlockComponent: React.FC<Props> = ({ code, language, nodeKey })
                 const node = $getNodeByKey(nodeKey)
                 if ($isCodeBlockNode(node) && node.getCode() !== (nextCode ?? '')) {
                     node.setCode(nextCode ?? '')
+                }
+            })
+        },
+        [editor, nodeKey],
+    )
+
+    const setFilename = useCallback(
+        (nextFilename: string) => {
+            editor.update(() => {
+                const node = $getNodeByKey(nodeKey)
+                if ($isCodeBlockNode(node)) {
+                    node.setFilename(nextFilename)
                 }
             })
         },
@@ -127,15 +138,14 @@ export const CodeBlockComponent: React.FC<Props> = ({ code, language, nodeKey })
         [language, setLanguage],
     )
 
-    const toggleCollapsed = useCallback(() => setIsCollapsed((collapsed) => !collapsed), [])
-
     return (
         <div
             className={`${baseClass}__container`}
-            // Keys typed in the header (language search, buttons) belong to it, not to the rich text editor
+            // Keys typed in the header (file name, language search, buttons) belong to it, not to the
+            // rich text editor
             onKeyDownCapture={(event) => {
                 const target = event.target as HTMLElement
-                if (target.closest(`.${baseClass}__actions, .combobox`)) {
+                if (target.closest(`.${baseClass}__header, .${baseClass}__actions, .combobox`)) {
                     event.stopPropagation()
                 }
             }}
@@ -162,15 +172,6 @@ export const CodeBlockComponent: React.FC<Props> = ({ code, language, nodeKey })
                             size="large"
                         />
                         <CopyToClipboard value={code} />
-                        <button
-                            aria-label={isCollapsed ? t('general:expand') : t('general:collapse')}
-                            className={`${baseClass}__collapse-button`}
-                            onClick={toggleCollapsed}
-                            title={isCollapsed ? t('general:expand') : t('general:collapse')}
-                            type="button"
-                        >
-                            {isCollapsed ? <ExpandIcon /> : <CollapseIcon />}
-                        </button>
                         {isEditable ? (
                             <Button
                                 buttonStyle="ghost"
@@ -186,12 +187,6 @@ export const CodeBlockComponent: React.FC<Props> = ({ code, language, nodeKey })
                         ) : null}
                     </div>
                 }
-                AfterCollapsible={
-                    <button className={`${baseClass}__floating-collapse-button`} onClick={toggleCollapsed} type="button">
-                        {isCollapsed ? <ExpandIcon /> : <CollapseIcon />}
-                        <span>{isCollapsed ? t('general:expand') : t('general:collapse')}</span>
-                    </button>
-                }
                 className={baseClass}
                 disableHeaderToggle
                 disableToggleIndicator
@@ -200,10 +195,23 @@ export const CodeBlockComponent: React.FC<Props> = ({ code, language, nodeKey })
                         <div className={`${baseClass}__pill`}>
                             <CodeBlockIcon />
                         </div>
+                        {/* Same look as the block name input of Payload's blocks (`section-title`) */}
+                        <div className={`section-title ${baseClass}__filename`}>
+                            <input
+                                aria-label="File name"
+                                className="section-title__input"
+                                onChange={(event) => setFilename(event.target.value)}
+                                placeholder="Untitled"
+                                readOnly={!isEditable}
+                                spellCheck={false}
+                                type="text"
+                                value={filename}
+                            />
+                        </div>
                     </div>
                 }
-                isCollapsed={isCollapsed}
-                onToggle={setIsCollapsed}
+                // Always open: no collapse / expand
+                isCollapsed={false}
             >
                 <CodeEditor
                     language={monacoLanguage}

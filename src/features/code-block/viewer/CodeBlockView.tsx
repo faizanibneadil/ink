@@ -41,11 +41,17 @@ const CheckIcon = () => (
 )
 
 /** Read-only code block: line numbers + syntax highlighting (highlight.js), Copy button, no editor. */
-export const CodeBlockView: React.FC<{ code: string, language?: null | string }> = ({ code, language }) => {
+export const CodeBlockView: React.FC<{ code: string, filename?: null | string, language?: null | string }> = ({
+    code,
+    filename,
+    language,
+}) => {
     const [copied, setCopied] = useState(false)
     const timeout = useRef<ReturnType<typeof setTimeout>>(undefined)
     const lines = useMemo(() => highlightLines(code, language), [code, language])
-    const label = language ? codeLanguages[language as keyof typeof codeLanguages] ?? language : ''
+    const languageLabel = language ? codeLanguages[language as keyof typeof codeLanguages] ?? language : ''
+    // File name first when set: "app.tsx · TypeScript"
+    const label = [filename?.trim(), languageLabel].filter(Boolean).join(' · ')
 
     useEffect(() => () => clearTimeout(timeout.current), [])
 

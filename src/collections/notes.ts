@@ -21,9 +21,18 @@ export const Notes: CollectionConfig = {
         admin: { className: "notion-field" },
         editor: lexicalEditor({
             features: ({ rootFeatures }) => {
-                return [...rootFeatures, BlocksFeature({
-                    blocks: ['CodeBlock']
-                }), FixedToolbarFeature(), TableFeature(), ExcalidrawFeature(), CodeBlockFeature()]
+                return [
+                    ...rootFeatures,
+                    BlocksFeature({
+                        blocks: ['CodeBlock']
+                    }),
+                    FixedToolbarFeature(),
+                    TableFeature(),
+                    ExcalidrawFeature(),
+                    // Keep after BlocksFeature: Payload loads features in reverse order, so the ```
+                    // shortcut of the native code block runs before the legacy CodeBlock block's.
+                    CodeBlockFeature(),
+                ]
             },
             views: "@/views/config.tsx#views"
         })
