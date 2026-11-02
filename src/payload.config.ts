@@ -43,7 +43,7 @@ const cloudflareLogger = {
   warn: createLog('warn', console.warn),
   error: createLog('error', console.error),
   fatal: createLog('fatal', console.error),
-  silent: () => {},
+  silent: () => { },
 } as any // eslint-disable-line @typescript-eslint/no-explicit-any -- PayloadLogger type isn't exported
 
 // Public URL of this deployment, used as Payload's `serverURL` and as the only allowed origin for
@@ -71,6 +71,10 @@ export default buildConfig({
       views: {
         note: {
           path: "/tack",
+          meta: {
+            title: "Ink - Note",
+            description: "Ink is a note tacking app."
+          },
           Component: "@/views/note.tsx#Note",
         }
       },
@@ -105,20 +109,20 @@ export default buildConfig({
   },
   db: cloudflare
     ? sqliteD1Adapter({
-        binding: cloudflare.D1,
-        blocksAsJSON: true,
-        migrationDir: path.resolve(dirname, 'migrations'),
-      })
+      binding: cloudflare.D1,
+      blocksAsJSON: true,
+      migrationDir: path.resolve(dirname, 'migrations'),
+    })
     : sqliteAdapter({
-        blocksAsJSON: true,
-        migrationDir: path.resolve(dirname, 'migrations'),
-        transactionOptions: {
-          behavior: "deferred"
-        },
-        client: {
-          url: process.env.DATABASE_URL || '',
-        },
-      }),
+      blocksAsJSON: true,
+      migrationDir: path.resolve(dirname, 'migrations'),
+      transactionOptions: {
+        behavior: "deferred"
+      },
+      client: {
+        url: process.env.DATABASE_URL || '',
+      },
+    }),
   logger: cloudflare ? cloudflareLogger : undefined,
   storage: [
     // Disabled locally: uploads go to the local `media/` folder. It is still registered so the
