@@ -4,11 +4,11 @@ import type {
     LexicalEditorViewMap,
     SerializedBlockNode,
 } from '@payloadcms/richtext-lexical'
-import type { CodeBlock, WhiteboardBlockPropsType } from '@/payload-types'
+import type { CodeBlock } from '@/payload-types'
 
 type NodeTypes =
     | DefaultNodeTypes
-    | SerializedBlockNode<WhiteboardBlockPropsType | CodeBlock>
+    | SerializedBlockNode<CodeBlock>
 
 export const views: LexicalEditorViewMap<NodeTypes> = {
     default: {

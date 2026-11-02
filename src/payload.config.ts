@@ -15,7 +15,6 @@ import { Users } from './collections/Users'
 import { Media } from './collections/Media'
 import { Folders } from './collections/Folders'
 import { Tags } from './collections/Tags'
-import { Whiteboard } from './blocks/whiteboard/config'
 import { Notes } from './collections/notes'
 import { codeLanguages } from './blocks/code/languages'
 import { Settings } from './globals/settings'
@@ -81,7 +80,7 @@ export default buildConfig({
       }
     }
   },
-  blocks: [Whiteboard, CodeBlock({
+  blocks: [CodeBlock({
     defaultLanguage: "ts",
     fieldOverrides: {
       slug: "CodeBlock"
