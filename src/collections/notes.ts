@@ -3,6 +3,8 @@ import { CollectionConfig } from "payload";
 
 import { ExcalidrawFeature } from "@/features/excalidraw/feature.server";
 
+import { slugifyNote } from "./note-slug";
+
 export const Notes: CollectionConfig = {
     slug: "notes",
     access: {
@@ -24,5 +26,12 @@ export const Notes: CollectionConfig = {
             },
             views: "@/views/config.tsx#views"
         })
+    }, {
+        // Native Payload slug field (unique + indexed). Made once, from the note's first heading /
+        // paragraph, max 60 characters (see ./note-slug.ts). Used by the /admin/tack/<slug> view.
+        name: "slug",
+        type: "slug",
+        useAsSlug: "note",
+        slugify: slugifyNote,
     }]
 }

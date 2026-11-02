@@ -362,6 +362,7 @@ export interface Tag {
 export interface Note {
   id: number;
   note?: LexicalRichText<LexicalNodes_31D53ABE> | null;
+  slug: string;
   createdBy?: {
     relationTo: 'users';
     value: number | User;
@@ -577,6 +578,7 @@ export interface TagsSelect<T extends boolean = true> {
  */
 export interface NotesSelect<T extends boolean = true> {
   note?: T;
+  slug?: T;
   createdBy?: T;
   updatedBy?: T;
   updatedAt?: T;
