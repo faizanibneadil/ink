@@ -4,7 +4,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { sqliteD1Adapter } from '@payloadcms/db-d1-sqlite'
 import { sqliteAdapter } from '@payloadcms/db-sqlite'
 import { mcpPlugin } from '@payloadcms/plugin-mcp'
-import { CodeBlock, lexicalEditor } from '@payloadcms/richtext-lexical'
+import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { r2Storage } from '@payloadcms/storage-r2'
 import path from 'path'
 import { buildConfig } from 'payload'
@@ -16,7 +16,6 @@ import { Media } from './collections/Media'
 import { Folders } from './collections/Folders'
 import { Tags } from './collections/Tags'
 import { Notes } from './collections/notes'
-import { codeLanguages } from './features/code-block'
 import { Settings } from './globals/settings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -80,16 +79,6 @@ export default buildConfig({
       }
     }
   },
-  blocks: [CodeBlock({
-    defaultLanguage: "ts",
-    fieldOverrides: {
-      slug: "CodeBlock",
-      // Legacy block, replaced by the native Code Block feature (src/features/code-block)
-      labels: { singular: "Code (Legacy)", plural: "Code (Legacy)" },
-    },
-    // Popular languages, shared with the read-only note view (syntax highlighting)
-    languages: codeLanguages
-  })],
   collections: [Users, Media, Folders, Tags, Notes],
   globals: [Settings],
   editor: lexicalEditor({

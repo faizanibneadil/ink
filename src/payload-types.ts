@@ -62,22 +62,21 @@ export type SupportedTimezones =
   | 'Pacific/Fiji';
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "LexicalNodes_5A8FC916".
+ * via the `definition` "LexicalNodes_5B1EF549".
  */
-export type LexicalNodes_5A8FC916 =
+export type LexicalNodes_5B1EF549 =
   | SerializedTextNode
   | SerializedTabNode
   | SerializedLineBreakNode
-  | SerializedParagraphNode<LexicalNodes_5A8FC916>
+  | SerializedParagraphNode<LexicalNodes_5B1EF549>
   | SerializedCodeBlockNode
   | SerializedExcalidrawNode
-  | SerializedTableNode<LexicalNodes_5A8FC916>
-  | SerializedTableCellNode<LexicalNodes_5A8FC916>
-  | SerializedTableRowNode<LexicalNodes_5A8FC916>
-  | SerializedBlockNode<CodeBlock>
+  | SerializedTableNode<LexicalNodes_5B1EF549>
+  | SerializedTableCellNode<LexicalNodes_5B1EF549>
+  | SerializedTableRowNode<LexicalNodes_5B1EF549>
   | SerializedHorizontalRuleNode
   | SerializedUploadNode<'media'>
-  | SerializedQuoteNode<LexicalNodes_5A8FC916>
+  | SerializedQuoteNode<LexicalNodes_5B1EF549>
   | SerializedRelationshipNode<
       | 'users'
       | 'folders'
@@ -88,11 +87,11 @@ export type LexicalNodes_5A8FC916 =
       | 'payload-preferences'
       | 'payload-migrations'
     >
-  | SerializedAutoLinkNode<LexicalNodes_5A8FC916, LexicalLinkFields>
-  | SerializedLinkNode<LexicalNodes_5A8FC916, LexicalLinkFields>
-  | SerializedListNode<LexicalNodes_5A8FC916>
-  | SerializedListItemNode<LexicalNodes_5A8FC916>
-  | SerializedHeadingNode<LexicalNodes_5A8FC916>;
+  | SerializedAutoLinkNode<LexicalNodes_5B1EF549, LexicalLinkFields>
+  | SerializedLinkNode<LexicalNodes_5B1EF549, LexicalLinkFields>
+  | SerializedListNode<LexicalNodes_5B1EF549>
+  | SerializedListItemNode<LexicalNodes_5B1EF549>
+  | SerializedHeadingNode<LexicalNodes_5B1EF549>;
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "LexicalNodes_3DE324E4".
@@ -110,9 +109,7 @@ export interface Config {
   auth: {
     users: UserAuthOperations;
   };
-  blocks: {
-    CodeBlock: CodeBlock_570EF7B0;
-  };
+  blocks: {};
   collections: {
     users: User;
     media: Media;
@@ -177,66 +174,6 @@ export interface UserAuthOperations {
   unlock: {
     username: string;
   };
-}
-/**
- * Multiple blocks resolve to the `CodeBlock` interface with different fields, so a content hash is appended to keep the generated types stable and unambiguous. Set a unique `interfaceName` on the block to choose the name yourself. See https://payloadcms.com/docs/typescript/generating-types#block-interface-name-collisions
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "CodeBlock_570EF7B0".
- */
-export interface CodeBlock_570EF7B0 {
-  language?:
-    | (
-        | 'plaintext'
-        | 'ts'
-        | 'tsx'
-        | 'js'
-        | 'jsx'
-        | 'json'
-        | 'html'
-        | 'css'
-        | 'scss'
-        | 'less'
-        | 'markdown'
-        | 'yaml'
-        | 'xml'
-        | 'graphql'
-        | 'sql'
-        | 'mysql'
-        | 'pgsql'
-        | 'shell'
-        | 'powershell'
-        | 'bat'
-        | 'dockerfile'
-        | 'ini'
-        | 'python'
-        | 'java'
-        | 'kotlin'
-        | 'swift'
-        | 'objective-c'
-        | 'dart'
-        | 'go'
-        | 'rust'
-        | 'c'
-        | 'cpp'
-        | 'csharp'
-        | 'vb'
-        | 'php'
-        | 'ruby'
-        | 'perl'
-        | 'lua'
-        | 'r'
-        | 'scala'
-        | 'elixir'
-        | 'protobuf'
-        | 'handlebars'
-        | 'twig'
-      )
-    | null;
-  code?: string | null;
-  id?: string | null;
-  blockName?: string | null;
-  blockType: 'CodeBlock';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -362,7 +299,7 @@ export interface Tag {
  */
 export interface Note {
   id: number;
-  note?: LexicalRichText<LexicalNodes_5A8FC916> | null;
+  note?: LexicalRichText<LexicalNodes_5B1EF549> | null;
   slug: string;
   createdBy?: {
     relationTo: 'users';
@@ -738,64 +675,6 @@ export interface UploadDropzoneWidget {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "CodeBlock".
- */
-export interface CodeBlock {
-  id: string;
-  blockType: 'CodeBlock';
-  language?:
-    | (
-        | 'plaintext'
-        | 'ts'
-        | 'tsx'
-        | 'js'
-        | 'jsx'
-        | 'json'
-        | 'html'
-        | 'css'
-        | 'scss'
-        | 'less'
-        | 'markdown'
-        | 'yaml'
-        | 'xml'
-        | 'graphql'
-        | 'sql'
-        | 'mysql'
-        | 'pgsql'
-        | 'shell'
-        | 'powershell'
-        | 'bat'
-        | 'dockerfile'
-        | 'ini'
-        | 'python'
-        | 'java'
-        | 'kotlin'
-        | 'swift'
-        | 'objective-c'
-        | 'dart'
-        | 'go'
-        | 'rust'
-        | 'c'
-        | 'cpp'
-        | 'csharp'
-        | 'vb'
-        | 'php'
-        | 'ruby'
-        | 'perl'
-        | 'lua'
-        | 'r'
-        | 'scala'
-        | 'elixir'
-        | 'protobuf'
-        | 'handlebars'
-        | 'twig'
-      )
-    | null;
-  code?: string | null;
-  blockName?: string | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "auth".
  */
 export interface Auth {
@@ -888,20 +767,6 @@ export interface SerializedTableCellNode<TChildren> extends SerializedLexicalEle
   verticalAlign?: string;
   width?: number;
 }
-
-export type SerializedBlockNode<TFields extends { blockType: string }> = TFields extends unknown ? {
-  type: 'block';
-  format: LexicalElementFormat;
-  /** @deprecated Ignored when loading. Typed as required only to match Lexical's types: rich text sent through the API, CLI or MCP may not contain it. */
-  version: number;
-  fields: { id: string; blockName?: string | null } & Omit<TFields, 'id' | 'blockName'>;
-} : never;
-export type SerializedInlineBlockNode<TFields extends { blockType: string }> = TFields extends unknown ? {
-  type: 'inlineBlock';
-  /** @deprecated Ignored when loading. Typed as required only to match Lexical's types: rich text sent through the API, CLI or MCP may not contain it. */
-  version: number;
-  fields: { id: string } & Omit<TFields, 'id'>;
-} : never;
 
 export interface SerializedHorizontalRuleNode {
   type: 'horizontalrule';
