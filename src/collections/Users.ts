@@ -10,7 +10,8 @@ export const Users: CollectionConfig = {
       allowEmailLogin: false,
       requireEmail: false,
       requireUsername: true
-    }
+    },
+    passwordHashIterations: 100000
   },
   fields: [
     // Email added by default

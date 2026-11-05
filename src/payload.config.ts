@@ -1,5 +1,3 @@
-import './lib/patch-pbkdf2'
-
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { sqliteD1Adapter } from '@payloadcms/db-d1-sqlite'
 import { sqliteAdapter } from '@payloadcms/db-sqlite'
