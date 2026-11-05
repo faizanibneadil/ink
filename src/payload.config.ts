@@ -81,6 +81,10 @@ export default buildConfig({
       }
     }
   },
+  // Cloudflare Workers' node:crypto caps PBKDF2 at 100,000 iterations (Payload default is 600,000).
+  auth: {
+    passwordHashIterations: 100000,
+  },
   collections: [Users, Media, Folders, Tags, Notes],
   globals: [Settings],
   editor: lexicalEditor({
