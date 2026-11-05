@@ -2,8 +2,10 @@ import { getPayload } from 'payload'
 import type { User } from '../../src/payload-types.js'
 import config from '../../src/payload.config.js'
 
-export const testUser: Pick<User, 'email' | 'username'> & { email: string; password: string } = {
+export const testUser: Pick<User, 'email' | 'role' | 'username'> & { email: string; password: string } = {
   email: 'dev@payloadcms.com',
+  // The Payload admin is admins-only (see src/app/[[...segments]]/page.tsx)
+  role: 'admin',
   password: 'test',
   username: 'dev',
 }

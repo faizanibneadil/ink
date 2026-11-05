@@ -4,15 +4,16 @@ import { CollectionConfig } from "payload";
 import { CodeBlockFeature } from "@/features/code-block";
 import { ExcalidrawFeature } from "@/features/excalidraw";
 
-import { slugifyNote } from "./note-slug";
+import { slugifyNote, validateNoteSlug } from "./note-slug";
 
 export const Notes: CollectionConfig = {
     slug: "notes",
     access: {
-        create: () => true,
-        delete: () => true,
+        // Anyone can read a note (`/<slug>` shows it to guests). Changing notes needs a login.
+        create: ({ req }) => Boolean(req.user),
+        delete: ({ req }) => Boolean(req.user),
         read: () => true,
-        update: () => true,
+        update: ({ req }) => Boolean(req.user),
     },
     versions: false,
     fields: [{
@@ -33,10 +34,12 @@ export const Notes: CollectionConfig = {
         })
     }, {
         // Native Payload slug field (unique + indexed). Made once, from the note's first heading /
-        // paragraph, max 60 characters (see ./note-slug.ts). Used by the /admin/tack/<slug> view.
+        // paragraph, max 60 characters (see ./note-slug.ts). The note is shown at `/<slug>`
+        // (src/app/[[...segments]]/page.tsx); slugs that are Payload admin routes get a `-note` suffix.
         name: "slug",
         type: "slug",
         useAsSlug: "note",
         slugify: slugifyNote,
+        validate: validateNoteSlug,
     }]
 }

@@ -1,4 +1,7 @@
-import { type Slugify, slugify } from 'payload/shared'
+import type { SanitizedConfig, TextFieldSingleValidation } from 'payload'
+import { type Slugify, slugify, text } from 'payload/shared'
+
+import { getReservedSlugs } from '@/utilities/isPayloadRoute'
 
 /** Longest slug, including the `-N` suffix Payload adds when a slug is already taken. */
 export const NOTE_SLUG_MAX_LENGTH = 60
@@ -77,7 +80,26 @@ export const slugifyText = (text: string): string => {
  * - a string (typed by hand in the slug field) -> cleaned up the same way
  * Returns `undefined` when nothing usable is left, so Payload falls back to `note-1`, `note-2`...
  */
-export const slugifyNote: Slugify = ({ valueToSlugify }) => {
+export const slugifyNote: Slugify = ({ req, valueToSlugify }) => {
     const text = typeof valueToSlugify === 'string' ? valueToSlugify : getNoteFirstLine(valueToSlugify)
-    return slugifyText(text) || undefined
+    const slug = slugifyText(text)
+    if (!slug) {
+        return undefined
+    }
+    // Notes live at `/<slug>`, next to the Payload admin (`/login`, `/collections`, ...): never take a Payload route.
+    return isReservedNoteSlug(slug, req.payload.config) ? `${slug}${RESERVED_SLUG_SUFFIX}` : slug
+}
+
+/** Added to a slug that would be a Payload route, e.g. `login` -> `login-note`. */
+export const RESERVED_SLUG_SUFFIX = '-note'
+
+export const isReservedNoteSlug = (slug: string, config: SanitizedConfig): boolean =>
+    getReservedSlugs(config).has(slug.toLowerCase())
+
+/** Field validation: rejects a slug that is a Payload route (in case one gets past `slugifyNote`). */
+export const validateNoteSlug: TextFieldSingleValidation = (value, args) => {
+    if (typeof value === 'string' && isReservedNoteSlug(value, args.req.payload.config)) {
+        return `"${value}" is used by the app (it is a Payload admin route). Choose another slug.`
+    }
+    return text(value, args)
 }

@@ -1,74 +1,196 @@
-import { match } from "path-to-regexp"
-import type { SanitizedConfig } from "payload"
+import { pathToRegexp } from 'path-to-regexp'
+import type { SanitizedConfig } from 'payload'
 
-export const payloadSegments = [
-    "create-first-user",
-    "forgot",
-    "login",
-    "unauthorized",
-    "logout-inactivity",
-    "collections",
-    "globals",
-    "logout",
-    "account",
-]
+/*
+ * The Payload admin lives at `/` (`routes.admin: '/'`), next to the website. This file decides, for a URL inside
+ * `src/app/[[...segments]]`, whether Payload or the website renders it. Everything is read from the Payload config
+ * (no hard-coded list), so new built-in routes, `admin.routes` overrides and custom views are picked up on their own.
+ *
+ * Payload 4.0.0-beta.7 admin routes (`@payloadcms/ui/dist/views/Root/getRouteData.js`):
+ *   /                                      dashboard (here: `/?v=d`, or `/` for a logged-in admin)
+ *   /account /create-first-user /forgot /login /logout /logout-inactivity /unauthorized   (`config.admin.routes`)
+ *   /reset/:token                          (`config.admin.routes.reset`)
+ *   /:authCollectionSlug/verify/:token
+ *   /collections/...  /globals/...
+ *   custom views                           (`config.admin.components.views[*].path`)
+ */
 
-export const isPayloadRoute = ({
-    config,
-    params,
-    headers,
-    searchParams,
+/** `?v=d` opens the Payload dashboard, `?v=w` the website. */
+export const VIEW_PARAM = 'v'
+export const DASHBOARD_VIEW = 'd'
+export const WEBSITE_VIEW = 'w'
+
+/**
+ * - `dashboard`: Payload dashboard (`/`)
+ * - `public`:    Payload pages that work without an admin login (login, forgot / reset password, logout, verify ...)
+ * - `admin`:     every other Payload page (collections, globals, account, custom views): admins only
+ * - `null`:      not Payload: the website renders it
+ */
+export type PayloadRouteKind = 'admin' | 'dashboard' | 'public' | null
+
+type SearchParams = Record<string, string | string[] | undefined> | undefined
+
+/** `config.admin.routes` keys Payload lets in without admin access (see `isPublicAdminRoute` in @payloadcms/ui). */
+const PUBLIC_ADMIN_ROUTE_KEYS = [
+  'createFirstUser',
+  'forgot',
+  'inactivity',
+  'login',
+  'logout',
+  'reset',
+  'unauthorized',
+] as const
+
+/** Route prefixes Payload always renders (`/collections/...`, `/globals/...`). */
+const ADMIN_ROUTE_SEGMENTS = ['collections', 'globals'] as const
+
+/** Paths outside the Payload admin that a note slug must never use. */
+const NON_ADMIN_RESERVED_SEGMENTS = ['api', '_next'] as const
+
+const firstSegment = (path: string | undefined): string | undefined =>
+  path?.split('/').filter(Boolean)[0]
+
+const getParam = (searchParams: SearchParams, name: string): string | undefined => {
+  const value = searchParams?.[name]
+  return Array.isArray(value) ? value[0] : value
+}
+
+/** `config.admin.routes` as `{ key: firstSegment }`, e.g. `{ login: 'login', reset: 'reset' }`. */
+const getAdminRouteSegments = (config: SanitizedConfig): Record<string, string> => {
+  const segments: Record<string, string> = {}
+  for (const [key, route] of Object.entries(config.admin?.routes ?? {})) {
+    const segment = typeof route === 'string' ? firstSegment(route) : undefined
+    if (segment) {
+      segments[key] = segment
+    }
+  }
+  return segments
+}
+
+/**
+ * Same matching as Payload's own router (`isPathMatchingRoute` in @payloadcms/ui, `path-to-regexp@6`), so a URL is
+ * a custom view here exactly when Payload would render that custom view.
+ */
+export const isPathMatchingView = ({
+  exact,
+  path: viewPath,
+  pathname,
+  sensitive,
+  strict,
 }: {
-    config: SanitizedConfig
-    params: Awaited<PageProps<"/[[...segments]]">["params"]>
-    headers?: Headers
-    searchParams?: Awaited<PageProps<"/[[...segments]]">["searchParams"]>
-}) => {
-    const segments = params?.segments ?? []
-    const hasSegments = segments.length > 0
+  exact?: boolean
+  path?: string
+  pathname: string
+  sensitive?: boolean
+  strict?: boolean
+}): boolean => {
+  if (!viewPath) {
+    return false
+  }
+  const stripTrailingSlash = (value: string) => (value.length > 1 && value.endsWith('/') ? value.slice(0, -1) : value)
+  const route = strict ? pathname : stripTrailingSlash(pathname)
+  const match = pathToRegexp(viewPath, [], { sensitive, strict }).exec(route)
+  const viewRoute = strict ? match?.[0] || viewPath : stripTrailingSlash(match?.[0] || viewPath)
 
-    const viewType = searchParams?.vt ?? headers?.get("x-view-type")
+  if (exact) {
+    return route === viewRoute
+  }
+  if (!route.startsWith(viewRoute)) {
+    return false
+  }
+  const rest = route.slice(viewRoute.length)
+  return rest === '' || rest.startsWith('/')
+}
 
-    /*
-     * Root route:
-     * /?vt=db  => Payload dashboard
-     * /?vt=web => Website landing page
-     */
-    if (!hasSegments) {
-        return viewType === "db"
+/** Custom views from `config.admin.components.views` that have their own path (built-in overrides have none). */
+const getCustomViews = (config: SanitizedConfig) =>
+  Object.values(config.admin?.components?.views ?? {}).filter(
+    (view): view is NonNullable<typeof view> & { path: `/${string}` } =>
+      Boolean(view && typeof view.path === 'string' && view.path !== '/'),
+  )
+
+/**
+ * Which kind of Payload page (if any) `segments` + `searchParams` point to.
+ *
+ * `isAdmin` is only used for `/` without `?v=`: a logged-in admin gets the dashboard, everyone else the website.
+ */
+export const getPayloadRouteKind = ({
+  config,
+  isAdmin = false,
+  searchParams,
+  segments = [],
+}: {
+  config: SanitizedConfig
+  isAdmin?: boolean
+  searchParams?: SearchParams
+  segments?: string[]
+}): PayloadRouteKind => {
+  if (segments.length === 0) {
+    const view = getParam(searchParams, VIEW_PARAM)
+    if (view === DASHBOARD_VIEW) {
+      return 'dashboard'
     }
-
-    const firstSegment = segments[0]
-    const pathname = `/${segments.join("/")}`
-
-    /*
-     * Payload built-in routes always render Payload,
-     * regardless of viewType.
-     */
-    if (payloadSegments.includes(firstSegment)) {
-        return true
+    if (view === WEBSITE_VIEW) {
+      return null
     }
+    return isAdmin ? 'dashboard' : null
+  }
 
-    /*
-     * Payload custom views always render Payload,
-     * regardless of viewType.
-     */
-    const views = config.admin?.components?.views ?? {}
+  const [segmentOne] = segments
+  const adminRouteSegments = getAdminRouteSegments(config)
 
-    const isPayloadCustomView = Object.values(views).some((view) => {
-        if (!view?.path) {
-            return false
-        }
+  // /login, /forgot, /reset/:token, /logout ... (and `/account`, which needs an admin)
+  for (const [key, segment] of Object.entries(adminRouteSegments)) {
+    if (segment === segmentOne) {
+      return (PUBLIC_ADMIN_ROUTE_KEYS as readonly string[]).includes(key) ? 'public' : 'admin'
+    }
+  }
 
-        const matcher = match(view.path, {
-            end: view.exact === true,
-            sensitive: view.sensitive === true,
-            trailing: view.strict !== true,
-            decode: decodeURIComponent,
-        })
+  // /:authCollectionSlug/verify/:token
+  if (
+    segments.length === 3 &&
+    segments[1] === 'verify' &&
+    config.collections.some((collection) => collection.slug === segmentOne && Boolean(collection.auth))
+  ) {
+    return 'public'
+  }
 
-        return Boolean(matcher(pathname))
-    })
+  // /collections/..., /globals/...
+  if ((ADMIN_ROUTE_SEGMENTS as readonly string[]).includes(segmentOne)) {
+    return 'admin'
+  }
 
-    return isPayloadCustomView
+  // Custom views
+  const pathname = `/${segments.join('/')}`
+  const isCustomView = getCustomViews(config).some((view) =>
+    isPathMatchingView({
+      exact: view.exact,
+      path: view.path,
+      pathname,
+      sensitive: view.sensitive,
+      strict: view.strict,
+    }),
+  )
+
+  return isCustomView ? 'admin' : null
+}
+
+/**
+ * First URL segments that belong to Payload (or Next.js / the API), so a note slug can never use them
+ * (`/<noteSlug>` would be shadowed by the Payload page).
+ */
+export const getReservedSlugs = (config: SanitizedConfig): Set<string> => {
+  const reserved = new Set<string>([
+    ...Object.values(getAdminRouteSegments(config)),
+    ...ADMIN_ROUTE_SEGMENTS,
+    ...NON_ADMIN_RESERVED_SEGMENTS,
+  ])
+  for (const view of getCustomViews(config)) {
+    const segment = firstSegment(view.path)
+    // A view like `/:slug` has no fixed first segment; it matches everything and cannot be reserved.
+    if (segment && !segment.startsWith(':')) {
+      reserved.add(segment.toLowerCase())
+    }
+  }
+  return reserved
 }

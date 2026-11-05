@@ -73,7 +73,7 @@ const editorThemeConverters: JSXConverters<DefaultNodeTypes> = {
     link: ({ node, nodesToJSX }) => {
         const doc = node.fields.doc
         const href = node.fields.linkType === 'internal'
-            ? (doc && typeof doc.value === 'object' ? `/admin/collections/${doc.relationTo}/${doc.value.id}` : '#')
+            ? (doc && typeof doc.value === 'object' ? `/collections/${doc.relationTo}/${doc.value.id}` : '#')
             : node.fields.url ?? ''
         return (
             <a

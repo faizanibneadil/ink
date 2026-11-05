@@ -73,16 +73,6 @@ export default buildConfig({
     },
     meta: { titleSuffix: ' - Ink' },
     components: {
-      views: {
-        note: {
-          path: "/tack",
-          meta: {
-            title: "Note",
-            description: "Ink is a note tacking app."
-          },
-          Component: "@/views/note.tsx#Note",
-        }
-      },
       graphics: {
         Logo: "@/graphics/logo/logo.tsx#Logo",
         Icon: "@/graphics/icon/icon.tsx#Icon"
