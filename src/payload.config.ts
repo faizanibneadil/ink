@@ -59,17 +59,25 @@ export default buildConfig({
   // cookie (CSRF). Payload also adds `serverURL` to `csrf` itself.
   cors: serverURL ? [serverURL] : [],
   csrf: serverURL ? [serverURL] : [],
+  routes: {
+    admin: '/',
+    api: '/api',
+    graphQL: '/api/graphql',
+    graphQLPlayground: '/api/graphql-playground',
+  },
   admin: {
     user: Users.slug,
     importMap: {
-      baseDir: path.resolve(dirname),
+      baseDir: path.resolve(dirname, './app'),
+      importMapFile: path.resolve(dirname, './app/importMap.js'),
     },
+    meta: { titleSuffix: ' - Ink' },
     components: {
       views: {
         note: {
           path: "/tack",
           meta: {
-            title: "Ink - Note",
+            title: "Note",
             description: "Ink is a note tacking app."
           },
           Component: "@/views/note.tsx#Note",
