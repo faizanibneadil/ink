@@ -447,7 +447,7 @@ async function adminScenario(browser, base) {
   await context.close()
 }
 
-async function userScenario(browser, base) {
+async function userScenario(browser, base, config) {
   section('User role')
   const { context, page } = await persona(browser, base)
   await login(page, 'normaluser')
@@ -470,6 +470,18 @@ async function userScenario(browser, base) {
     await page.keyboard.type(' typed by user')
     await page.waitForTimeout(1500)
     check('user can type in the editor', (await editor.innerText()).includes('typed by user'))
+    // Autosave (PATCH /api/notes/:id with the login cookie) through the Worker into D1
+    const saved = await page
+      .waitForSelector('[data-testid="note-save-status"][data-state="saved"]', { timeout: 30000 })
+      .then(() => true, () => false)
+    const status = await page.locator('[data-testid="note-save-status"]').getAttribute('data-state').catch(() => null)
+    check('user autosave → "Saved"', saved, `state ${status}`)
+    const row = sql(config, "SELECT slug, note FROM notes WHERE slug = 'hello-world'")
+    check(
+      'user autosave → content in D1, slug unchanged',
+      row.length === 1 && String(row[0].note).includes('typed by user'),
+      JSON.stringify(row.map((r) => r.slug)),
+    )
   }
   const promote = await api(page, 'PATCH', '/api/users/3', { role: 'admin' })
   const me = await api(page, 'GET', '/api/users/me')
@@ -565,7 +577,7 @@ async function main() {
       const base = 'http://localhost:8787'
       await guestScenario(browser, base)
       await adminScenario(browser, base)
-      await userScenario(browser, base)
+      await userScenario(browser, base, config)
       if (WITH_CUSTOM_VIEW) await customViewScenario(browser, base)
     } finally {
       stopServer(server)
