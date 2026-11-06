@@ -299,11 +299,19 @@ async function migrationScenario(config) {
 
   const clash = migrate(config)
   check('guard stops the migration on a clashing slug', !clash.ok && clash.out.includes('"login"'))
+  if (WITH_CUSTOM_VIEW) {
+    check('guard also reports a slug that equals a custom view path', clash.out.includes('"test-view"'))
+  }
   const roleColumn = sql(config, "SELECT name FROM pragma_table_info('users') WHERE name = 'role'")
   check('guard failure leaves the database unchanged (no role column)', roleColumn.length === 0)
   check('guard failure keeps all data', JSON.stringify(snapshot()) === JSON.stringify(beforeData))
 
   sql(config, "UPDATE notes SET slug = 'login-note' WHERE id = 2")
+  if (WITH_CUSTOM_VIEW) {
+    // Re-added after the migration below, as if the custom view had been added to the config later
+    sql(config, 'DELETE FROM notes WHERE id = 4')
+    beforeData.notes = beforeData.notes.filter((n) => n.id !== 4)
+  }
   const fixed = migrate(config)
   check('migration runs after the slug is renamed', fixed.ok, fixed.ok ? '' : fixed.out.slice(-500))
 
@@ -315,6 +323,7 @@ async function migrationScenario(config) {
   check('existing users became admins', roles.length === 2 && roles.every((u) => u.role === 'admin'), JSON.stringify(roles))
 
   insertUser(config, 3, 'normaluser', 'user')
+  if (WITH_CUSTOM_VIEW) insertNote(config, 4, 'test-view', 'Note that a custom view must hide')
 }
 
 async function guestScenario(browser, base) {
