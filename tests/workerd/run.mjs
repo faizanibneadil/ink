@@ -482,6 +482,23 @@ async function userScenario(browser, base, config) {
       row.length === 1 && String(row[0].note).includes('typed by user'),
       JSON.stringify(row.map((r) => r.slug)),
     )
+
+    // Cover upload from the note page: Media upload to R2 through the Worker, set on the note in D1
+    await page.locator('[data-testid="note-header"]').hover()
+    await page.locator('[data-testid="add-cover"]').click()
+    await page.locator('[data-testid="note-image-picker"] input[type="file"]').setInputFiles(path.join(ROOT, 'tests/fixtures/cover.png'))
+    const uploaded = await page
+      .waitForSelector('[data-testid="note-image-picker"]', { state: 'detached', timeout: 60000 })
+      .then(() => true, () => false)
+    const src = await page.locator('[data-testid="note-cover"] img').getAttribute('src').catch(() => null)
+    const image = src ? await page.request.get(new URL(src, base).toString()) : null
+    check(
+      'user uploads a cover → served from R2',
+      uploaded && image?.status() === 200 && (image.headers()['content-type'] ?? '').startsWith('image/png'),
+      `${src} ${image?.status()} ${image?.headers()['content-type']}`,
+    )
+    const coverRow = sql(config, "SELECT cover_id FROM notes WHERE slug = 'hello-world'")
+    check('user uploads a cover → notes.cover_id set in D1', Boolean(coverRow[0]?.cover_id), JSON.stringify(coverRow))
   }
   const promote = await api(page, 'PATCH', '/api/users/3', { role: 'admin' })
   const me = await api(page, 'GET', '/api/users/me')
