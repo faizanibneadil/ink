@@ -54,3 +54,7 @@ node_modules/
 .open-next
 .wrangler
 .dev.vars*
+
+# Temporary files of tests/workerd/run.mjs (removed when it ends)
+wrangler.workerd-test-*.jsonc
+.dev.vars.workerd-test-*
