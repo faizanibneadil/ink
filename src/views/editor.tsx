@@ -5,9 +5,11 @@ import type { Note, User } from '@/payload-types'
 
 import { buildEditorState, RenderLexical, RichTextViewProvider } from '@payloadcms/richtext-lexical/client'
 import { DocumentInfoProvider } from '@payloadcms/ui'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 
 import { NOTION_VIEW } from './config'
+import { SaveStatus } from './note-autosave/SaveStatus'
+import { useNoteAutosave } from './note-autosave/useNoteAutosave'
 import type { NoteHeaderData } from './note-header/header-data'
 import { NoteHeader } from './note-header/NoteHeader'
 
@@ -24,24 +26,38 @@ type Props = {
 
 type SetValue = NonNullable<React.ComponentProps<typeof RenderLexical>['setValue']>
 
-const NoteEditor: React.FC<{ note?: Note['note'] }> = ({ note }) => {
+const NoteEditor: React.FC<{ id: number | string, note?: Note['note'] }> = ({ id, note }) => {
     const [initialValue] = useState<DefaultTypedEditorState>(() => {
         return (note as DefaultTypedEditorState | null | undefined) ?? buildEditorState<DefaultNodeTypes>({ text: '' })
     })
     const [value, setValue] = useState<DefaultTypedEditorState | undefined>(initialValue)
+    // The saved value: an empty note (`null`) counts as saved too, so opening it saves nothing
+    const autosave = useNoteAutosave<DefaultTypedEditorState | null | undefined>(id, note as DefaultTypedEditorState | null | undefined)
+
+    const { onChange: autosaveChange } = autosave
+    const onValue = useCallback(
+        (next: DefaultTypedEditorState | undefined) => {
+            setValue(next)
+            autosaveChange(next)
+        },
+        [autosaveChange],
+    )
 
     return (
-        // Forces the field to the `notion` view (./config.tsx) and hides Payload's view selector
-        <RichTextViewProvider currentView={NOTION_VIEW} inheritable>
-            <RenderLexical
-                field={{ name: 'note' }}
-                initialValue={initialValue}
-                schemaPath="collection.notes.note"
-                // Payload types `setValue` as a form-field setter (`(value: unknown) => void`)
-                setValue={setValue as SetValue}
-                value={value}
-            />
-        </RichTextViewProvider>
+        <>
+            <SaveStatus onRetry={autosave.retry} snapshot={autosave.snapshot} />
+            {/* Forces the field to the `notion` view (./config.tsx) and hides Payload's view selector */}
+            <RichTextViewProvider currentView={NOTION_VIEW} inheritable>
+                <RenderLexical
+                    field={{ name: 'note' }}
+                    initialValue={initialValue}
+                    schemaPath="collection.notes.note"
+                    // Payload types `setValue` as a form-field setter (`(value: unknown) => void`)
+                    setValue={onValue as SetValue}
+                    value={value}
+                />
+            </RichTextViewProvider>
+        </>
     )
 }
 
@@ -61,7 +77,7 @@ export const Editor: React.FC<Props> = ({ header, id, note, user }) => {
             <article className="note-doc note-doc--editor">
                 <NoteHeader header={header} />
                 <div className="note-page note-page--editor">
-                    <NoteEditor note={note} />
+                    <NoteEditor id={id} note={note} />
                 </div>
             </article>
         </DocumentInfoProvider>

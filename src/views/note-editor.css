@@ -47,3 +47,20 @@
   padding: 3px 2px;
   color: var(--color-text-tertiary);
 }
+
+/*
+ * Payload's keyboard hint under the editor ("Press Escape, then Tab or Shift+Tab to move focus out of the editor.").
+ * Notion shows no text there, so it is hidden visually; screen readers still read it (the editor points to it).
+ */
+.note-page--editor .ContentEditable__keyboard-hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

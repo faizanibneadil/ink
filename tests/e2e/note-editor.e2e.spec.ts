@@ -73,6 +73,18 @@ test.describe('Note page editor (logged in)', () => {
     await expect(page.locator('.lexical-view-selector')).toHaveCount(0)
     await expect(page.locator('.note-page--editor .rich-text-lexical__label-row')).toBeHidden()
     await expect(editable(page)).toContainText(`E2E editor ${RUN}`)
+
+    // Payload's keyboard hint: not shown on the page (Notion has no such text), still read by screen readers
+    await editable(page).click()
+    const describedBy = (await editable(page).getAttribute('aria-describedby'))?.split(/\s+/).filter(Boolean) ?? []
+    expect(describedBy.length).toBeGreaterThan(0)
+    const hint = page
+      .locator(describedBy.map((id) => `[id="${id}"]`).join(', '))
+      .filter({ hasText: 'move focus out of the editor' })
+    await expect(hint).toHaveCount(1)
+    const hintBox = (await hint.boundingBox())!
+    expect(hintBox.width).toBeLessThanOrEqual(1)
+    expect(hintBox.height).toBeLessThanOrEqual(1)
     expect(problems).toEqual([])
   })
 
