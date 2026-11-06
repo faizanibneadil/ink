@@ -1,0 +1,49 @@
+/*
+ * Editor on the note page (src/views/editor.tsx, Lexical `notion` view): Notion-like, borderless writing surface.
+ *
+ * The text already has the read-only view's typography (the `notion` view adds the `note-view*` classes, see
+ * src/views/notion-theme.ts). This file only removes the Payload field chrome, so the text sits on the same column as
+ * the guest view and the header icon. Everything is scoped to `.note-page--editor`: the admin editor is not affected.
+ */
+
+/* Field label ("Note") and its row: the page is the note. The field group keeps its `aria-label`. */
+.note-page--editor .rich-text-lexical__label-row {
+  display: none;
+}
+
+/* No box around the editor */
+.note-page--editor .editor-container {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/*
+ * Payload places the drag handle and "+" button a fixed distance from the editor's left edge, inside a left gutter
+ * (padding) it expects before the text. Keep that gutter, but pull the whole editor left by the same amount: the text
+ * stays on the page column (same x as the read-only view and the header icon) and the handles sit in the left margin,
+ * like Notion.
+ */
+.note-page--editor {
+  --note-editor-gutter: 32px;
+}
+
+.note-page--editor .editor-container {
+  margin-left: calc(-1 * var(--note-editor-gutter));
+}
+
+.note-page--editor .ContentEditable__root {
+  min-height: 50vh;
+  padding: 0 0 0 var(--note-editor-gutter);
+  outline: none;
+}
+
+/* Placeholder ("Type '/' for commands") on the same spot as the first line */
+.note-page--editor .editor-placeholder,
+.note-page--editor .LexicalEditorTheme__placeholder {
+  left: var(--note-editor-gutter);
+  top: 0;
+  padding: 3px 2px;
+  color: var(--color-text-tertiary);
+}

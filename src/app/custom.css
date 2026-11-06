@@ -1,1 +1,9 @@
 /* Global admin overrides. The read-only note view has its own styles in src/views/note-viewer.css. */
+
+/*
+ * The notes field has a second Lexical view, `notion` (src/views/config.tsx), used only by the note page (`/<slug>`).
+ * Payload shows a "Default / Notion" view selector above such a field; the admin always edits in `default`.
+ */
+.notion-field .lexical-view-selector {
+  display: none;
+}

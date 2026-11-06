@@ -119,7 +119,7 @@ export default async function Page(props: Args) {
       notFound()
     }
     if (user) {
-      return <Editor key={note.id} id={note.id} note={note.note} user={user} />
+      return <Editor key={note.id} header={getNoteHeaderData(note)} id={note.id} note={note.note} user={user} />
     }
     // Reading layout (width, padding, responsive sizing) lives in note-viewer.css; the cover / icon header in
     // note-header.css. Only plain header values (URL, alt, size) go to the client, not the whole media documents.

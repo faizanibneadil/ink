@@ -80,13 +80,14 @@ export const createNoteSeeder = () => {
     },
     async note(
       title: string,
-      data: { cover?: number; coverPosition?: number; icon?: number; text?: string } = {},
+      data: { cover?: number; coverPosition?: number; empty?: boolean; icon?: number; text?: string } = {},
     ): Promise<Note> {
-      const { text, ...header } = data
+      const { empty, text, ...header } = data
       const doc = await (await getClient()).create({
         collection: 'notes',
         // `slug` is required in the type but made by the slug field from the note's first line
-        data: { note: noteContent(title, text), ...header } as RequiredDataFromCollectionSlug<'notes'>,
+        // `empty`: no content at all (a new note); the slug falls back to `note-N`
+        data: { note: empty ? null : noteContent(title, text), ...header } as RequiredDataFromCollectionSlug<'notes'>,
         overrideAccess: true,
       })
       notes.push(doc.id)
