@@ -237,11 +237,14 @@ const addCustomView = () => {
     `import type { AdminViewServerProps } from 'payload'
 
 // Temporary view added by tests/workerd/run.mjs --with-custom-view. Never committed.
-export const TestView = ({ params, user }: AdminViewServerProps) => (
-  <div data-test="test-view">
-    Test view: /{(params?.segments ?? []).join('/')} ({user ? 'logged in' : 'guest'})
-  </div>
-)
+export const TestView = ({ params, user }: AdminViewServerProps) => {
+  const segments = params?.segments ?? []
+  return (
+    <div data-test="test-view">
+      Test view: /{Array.isArray(segments) ? segments.join('/') : segments} ({user ? 'logged in' : 'guest'})
+    </div>
+  )
+}
 `,
   )
   TMP_FILES.push(TEST_VIEW_FILE)
