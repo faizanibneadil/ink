@@ -109,3 +109,40 @@ export const uploadHeaderImage = async ({
         throw error
     }
 }
+
+/** Images per page in the picker's Media library. */
+export const LIBRARY_PAGE_SIZE = 24
+
+export type LibraryPage = { docs: Media[]; hasNextPage: boolean; page: number }
+
+/**
+ * One page of images from the Media library, newest first. Only the image types the header accepts (no SVG, no
+ * other files), and only the fields the grid needs (`filename` is needed for Payload to build `url`).
+ */
+export const listLibraryImages = async (page: number): Promise<LibraryPage> => {
+    const params = new URLSearchParams({
+        depth: '0',
+        limit: String(LIBRARY_PAGE_SIZE),
+        page: String(page),
+        sort: '-createdAt',
+        'where[mimeType][in]': ACCEPTED_IMAGE_TYPES.join(','),
+    })
+    for (const field of ['alt', 'filename', 'height', 'mimeType', 'url', 'width']) {
+        params.set(`select[${field}]`, 'true')
+    }
+    const response = await request(`/api/media?${params.toString()}`, { method: 'GET' })
+    const body = (await response.json()) as { docs: Media[]; hasNextPage: boolean; page: number }
+    return { docs: body.docs, hasNextPage: body.hasNextPage, page: body.page }
+}
+
+/** Stores the cover's vertical position (0–100), queued with the other writes of the note. */
+export const setCoverPosition = (noteId: number | string, coverPosition: number) =>
+    runNoteRequest(noteId, async (): Promise<number> => {
+        const response = await request(`/api/notes/${encodeURIComponent(String(noteId))}?depth=0`, {
+            body: JSON.stringify({ coverPosition }),
+            headers: { 'Content-Type': 'application/json' },
+            method: 'PATCH',
+        })
+        const { doc } = (await response.json()) as { doc: Note }
+        return typeof doc.coverPosition === 'number' ? doc.coverPosition : coverPosition
+    })

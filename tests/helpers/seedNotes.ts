@@ -82,6 +82,17 @@ export const createNoteSeeder = () => {
       media.push(doc.id)
       return doc
     },
+    /** A media file from bytes (e.g. a text file or an SVG, to check they are never offered as images). */
+    async mediaFromBuffer(data: Buffer, name: string, mimetype: string, alt: string): Promise<Media> {
+      const doc = await (await getClient()).create({
+        collection: 'media',
+        data: { alt },
+        file: { data, mimetype, name, size: data.length },
+        overrideAccess: true,
+      })
+      media.push(doc.id)
+      return doc
+    },
     async note(
       title: string,
       data: { cover?: number; coverPosition?: number; empty?: boolean; icon?: number; text?: string } = {},

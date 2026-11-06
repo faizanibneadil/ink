@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import type { NoteHeaderData, NoteHeaderImage } from './header-data'
-import { type HeaderImageField, uploadHeaderImage } from './header-images'
+import type { Media } from '@/payload-types'
+
+import { type NoteHeaderData, type NoteHeaderImage, toHeaderImage } from './header-data'
+import { type HeaderImageField, setNoteImage, uploadHeaderImage } from './header-images'
 import { ImagePicker } from './ImagePicker'
 
 import './note-header.css'
@@ -65,6 +67,28 @@ export const EditableNoteHeader: React.FC<Props> = ({ getTitle, header: initialH
         }
     }
 
+    const onPick = async (field: HeaderImageField, media: Media) => {
+        const chosen = toHeaderImage(media)
+        if (!chosen) {
+            setError("This file can't be used as an image.")
+            return
+        }
+        const previous = header[field]
+        setHeader((current) => ({ ...current, [field]: chosen }))
+        setBusy(field)
+        setError(null)
+        try {
+            const image = await setNoteImage(noteId, field, media.id)
+            setHeader((current) => ({ ...current, [field]: image }))
+            setPicker(null)
+        } catch (failure) {
+            setHeader((current) => ({ ...current, [field]: previous }))
+            setError(failure instanceof Error && failure.message ? failure.message : "Couldn't use this image.")
+        } finally {
+            setBusy(null)
+        }
+    }
+
     const { cover, coverPosition, icon } = header
     const pickerFor = (field: HeaderImageField) =>
         picker?.field === field ? (
@@ -74,6 +98,7 @@ export const EditableNoteHeader: React.FC<Props> = ({ getTitle, header: initialH
                 field={field}
                 onClose={closePicker}
                 onFile={(file) => void onFile(field, file)}
+                onPick={(media) => void onPick(field, media)}
                 trigger={picker.trigger}
             />
         ) : null
