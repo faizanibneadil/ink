@@ -178,6 +178,56 @@
   opacity: 1;
 }
 
+/* ---------- Cover "Reposition" mode ---------- */
+
+.note-header__cover--repositioning {
+  cursor: grab;
+  /* Dragging on a touch screen moves the image, not the page */
+  touch-action: none;
+  user-select: none;
+}
+
+.note-header__cover--repositioning:active {
+  cursor: grabbing;
+}
+
+.note-header__cover--repositioning:focus-visible {
+  outline: 2px solid var(--color-border-focus, var(--color-text));
+  outline-offset: -2px;
+}
+
+.note-header__cover--repositioning .note-header__cover-image {
+  pointer-events: none;
+}
+
+.note-header__reposition-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  padding: 4px 12px;
+  border-radius: 4px;
+  background: rgb(0 0 0 / 0.55);
+  color: #fff;
+  font-size: 14px;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.note-header__cover-actions--visible {
+  opacity: 1;
+}
+
+.note-header__reposition-error {
+  align-self: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--color-bg);
+  color: var(--color-text-danger);
+  font-size: 13px;
+}
+
 /* Touch screens have no hover: the controls are always there */
 @media (hover: none) {
   .note-header__add,
