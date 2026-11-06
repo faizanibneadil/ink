@@ -304,6 +304,12 @@ export interface Note {
   id: number;
   note?: LexicalRichText<LexicalNodes_5B1EF549> | null;
   slug: string;
+  cover?: (number | null) | Media;
+  /**
+   * Vertical position of the cover photo, 0 (top) to 100 (bottom).
+   */
+  coverPosition?: number | null;
+  icon?: (number | null) | Media;
   createdBy?: {
     relationTo: 'users';
     value: number | User;
@@ -523,6 +529,9 @@ export interface TagsSelect<T extends boolean = true> {
 export interface NotesSelect<T extends boolean = true> {
   note?: T;
   slug?: T;
+  cover?: T;
+  coverPosition?: T;
+  icon?: T;
   createdBy?: T;
   updatedBy?: T;
   updatedAt?: T;

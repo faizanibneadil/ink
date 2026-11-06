@@ -8,5 +8,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
     include: ['tests/int/**/*.int.spec.ts'],
+    // All test files share one local SQLite file (DATABASE_URL): running them at the same time locks it (SQLITE_BUSY)
+    fileParallelism: false,
   },
 })

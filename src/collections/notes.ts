@@ -4,10 +4,20 @@ import { CollectionConfig } from "payload";
 import { CodeBlockFeature } from "@/features/code-block";
 import { ExcalidrawFeature } from "@/features/excalidraw";
 
+import { COVER_POSITION_DEFAULT, COVER_POSITION_MAX, COVER_POSITION_MIN } from "./note-header";
 import { slugifyNote, validateNoteSlug } from "./note-slug";
+
+/** Only images can be a note's cover or icon (checked by Payload on the server too, not only in the picker). */
+const imagesOnly = { mimeType: { contains: 'image/' } }
 
 export const Notes: CollectionConfig = {
     slug: "notes",
+    admin: {
+        // Notes have no title field: the slug (made from the first heading / paragraph) names them in the admin
+        useAsTitle: "slug",
+        // Grid / card views show the note's icon
+        useAsThumbnail: "icon",
+    },
     access: {
         // Anyone can read a note (`/<slug>` shows it to guests). Changing notes needs a login.
         create: ({ req }) => Boolean(req.user),
@@ -41,5 +51,30 @@ export const Notes: CollectionConfig = {
         useAsSlug: "note",
         slugify: slugifyNote,
         validate: validateNoteSlug,
+    }, {
+        // Notion-style page header (src/views/note-header): wide cover photo + rounded-square icon
+        name: "cover",
+        type: "upload",
+        relationTo: "media",
+        filterOptions: imagesOnly,
+        admin: { position: "sidebar" },
+    }, {
+        // Vertical position of the cover photo (CSS `object-position: center <n>%`), set by "Reposition"
+        name: "coverPosition",
+        type: "number",
+        defaultValue: COVER_POSITION_DEFAULT,
+        min: COVER_POSITION_MIN,
+        max: COVER_POSITION_MAX,
+        admin: {
+            position: "sidebar",
+            description: "Vertical position of the cover photo, 0 (top) to 100 (bottom).",
+            step: 1,
+        },
+    }, {
+        name: "icon",
+        type: "upload",
+        relationTo: "media",
+        filterOptions: imagesOnly,
+        admin: { position: "sidebar" },
     }]
 }

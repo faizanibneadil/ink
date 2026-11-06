@@ -8,7 +8,7 @@
  *   pnpm test:workerd --with-custom-view     # also tests a temporary custom view (/test-view); needs a clean git tree,
  *                                            # adds the view, rebuilds, tests, then restores every file
  *
- * Scenarios: migration safety (existing data kept, users -> admin, slug clash guard), guest / admin / `user` role
+ * Scenarios: migration safety (existing data kept, users -> admin, slug clash guard, note cover / icon columns), guest / admin / `user` role
  * routing and REST access, notes at `/<slug>`, 404s, custom views (rendered for everyone, before any note lookup),
  * and the first user on an empty database.
  *
@@ -321,6 +321,25 @@ async function migrationScenario(config) {
   check('user rows identical after migration (passwords, ids, dates)', JSON.stringify(after.users) === JSON.stringify(beforeData.users))
   const roles = sql(config, 'SELECT username, role FROM users ORDER BY id')
   check('existing users became admins', roles.length === 2 && roles.every((u) => u.role === 'admin'), JSON.stringify(roles))
+
+  // 20261106_212540_add_note_cover_icon: Notion-style header (cover, icon, cover position)
+  const header = sql(config, 'SELECT id, cover_id, icon_id, cover_position FROM notes ORDER BY id')
+  check(
+    'existing notes: no cover / icon, cover position 50',
+    header.length === expectedNotes.length &&
+      header.every((n) => n.cover_id === null && n.icon_id === null && Number(n.cover_position) === 50),
+    JSON.stringify(header),
+  )
+  // D1 enforces foreign keys: deleting a media file that is a cover / icon must clear it, not fail
+  sql(config, "INSERT INTO media (id, alt, filename) VALUES (900, 'workerd cover', 'workerd-cover.png');")
+  sql(config, 'UPDATE notes SET cover_id = 900, icon_id = 900 WHERE id = 3;')
+  sql(config, 'DELETE FROM media WHERE id = 900;')
+  const cleared = sql(config, 'SELECT cover_id, icon_id FROM notes WHERE id = 3')
+  check(
+    'deleting a cover / icon media clears the note fields (ON DELETE set null)',
+    cleared[0]?.cover_id === null && cleared[0]?.icon_id === null,
+    JSON.stringify(cleared),
+  )
 
   insertUser(config, 3, 'normaluser', 'user')
   if (WITH_CUSTOM_VIEW) insertNote(config, 4, 'test-view', 'Note that a custom view must hide')

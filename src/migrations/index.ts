@@ -4,6 +4,7 @@ import * as migration_20261102_215906_remove_legacy_code_block from './20261102_
 import * as migration_20261105_154605_payload_beta_7 from './20261105_154605_payload_beta_7';
 import * as migration_20261105_160042_relabel_clamped_password_hashes from './20261105_160042_relabel_clamped_password_hashes';
 import * as migration_20261105_190440_add_user_role from './20261105_190440_add_user_role';
+import * as migration_20261106_212540_add_note_cover_icon from './20261106_212540_add_note_cover_icon';
 
 export const migrations = [
   {
@@ -34,6 +35,11 @@ export const migrations = [
   {
     up: migration_20261105_190440_add_user_role.up,
     down: migration_20261105_190440_add_user_role.down,
-    name: '20261105_190440_add_user_role'
+    name: '20261105_190440_add_user_role',
+  },
+  {
+    up: migration_20261106_212540_add_note_cover_icon.up,
+    down: migration_20261106_212540_add_note_cover_icon.down,
+    name: '20261106_212540_add_note_cover_icon',
   },
 ];
