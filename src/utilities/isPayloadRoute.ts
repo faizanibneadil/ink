@@ -23,10 +23,12 @@ export const WEBSITE_VIEW = 'w'
 /**
  * - `dashboard`: Payload dashboard (`/`)
  * - `public`:    Payload pages that work without an admin login (login, forgot / reset password, logout, verify ...)
- * - `admin`:     every other Payload page (collections, globals, account, custom views): admins only
- * - `null`:      not Payload: the website renders it
+ * - `admin`:     every other built-in Payload page (collections, globals, account): admins only
+ * - `customView`: a custom view (`config.admin.components.views`). Rendered for everyone, as in Payload itself: the
+ *                 view decides on its own whether it needs a logged-in user. Checked before any note lookup.
+ * - `null`:      not Payload: the website renders it (`/<noteSlug>` or 404)
  */
-export type PayloadRouteKind = 'admin' | 'dashboard' | 'public' | null
+export type PayloadRouteKind = 'admin' | 'customView' | 'dashboard' | 'public' | null
 
 type SearchParams = Record<string, string | string[] | undefined> | undefined
 
@@ -160,7 +162,7 @@ export const getPayloadRouteKind = ({
     return 'admin'
   }
 
-  // Custom views
+  // Custom views (before the website, so `/<noteSlug>` never shadows one)
   const pathname = `/${segments.join('/')}`
   const isCustomView = getCustomViews(config).some((view) =>
     isPathMatchingView({
@@ -172,7 +174,7 @@ export const getPayloadRouteKind = ({
     }),
   )
 
-  return isCustomView ? 'admin' : null
+  return isCustomView ? 'customView' : null
 }
 
 /**

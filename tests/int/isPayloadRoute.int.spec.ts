@@ -63,6 +63,28 @@ describe('getPayloadRouteKind', () => {
     }
   })
 
+  it('a custom view wins over a note slug and over the website', () => {
+    const withViews = makeConfig({ testView: { Component: 'x', path: '/test-view' } })
+    const k = (path: string) =>
+      getPayloadRouteKind({ config: withViews, segments: path.split('/').filter(Boolean) })
+    expect(k('/test-view')).toBe('customView')
+    expect(k('/test-view/123')).toBe('customView')
+    expect(k('/test-view-note')).toBe(null)
+    // Built-in routes still come first
+    expect(getPayloadRouteKind({ config: makeConfig({ x: { Component: 'x', path: '/login' } }), segments: ['login'] })).toBe('public')
+  })
+
+  it('custom view options: sensitive, strict, param-only path', () => {
+    const k = (views: Record<string, unknown>, path: string) =>
+      getPayloadRouteKind({ config: makeConfig(views), segments: path.split('/').filter(Boolean) })
+    expect(k({ v: { Component: 'x', path: '/Case', sensitive: true } }, '/case')).toBe(null)
+    expect(k({ v: { Component: 'x', path: '/Case', sensitive: true } }, '/Case')).toBe('customView')
+    expect(k({ v: { Component: 'x', path: '/Case' } }, '/case')).toBe('customView')
+    // `/:slug` matches every one-segment URL, so it would take over all note URLs
+    expect(k({ v: { Component: 'x', path: '/:slug' } }, '/any-note')).toBe('customView')
+    expect(getReservedSlugs(makeConfig({ v: { Component: 'x', path: '/:slug' } })).has(':slug')).toBe(false)
+  })
+
   it('custom views, matched like Payload (path-to-regexp)', () => {
     const withViews = makeConfig({
       reports: { Component: 'x', path: '/reports/:id' },
@@ -72,15 +94,15 @@ describe('getPayloadRouteKind', () => {
     })
     const k = (path: string) =>
       getPayloadRouteKind({ config: withViews, segments: path.split('/').filter(Boolean) })
-    expect(k('/reports/1')).toBe('admin')
+    expect(k('/reports/1')).toBe('customView')
     // Same as Payload's router: a param pattern only matches its own segments
     expect(k('/reports/1/details')).toBe(null)
     // A static, non-exact path also matches sub-paths
-    expect(k('/section')).toBe('admin')
-    expect(k('/section/a/b')).toBe('admin')
+    expect(k('/section')).toBe('customView')
+    expect(k('/section/a/b')).toBe('customView')
     expect(k('/sections')).toBe(null)
     expect(k('/reports')).toBe(null)
-    expect(k('/stats')).toBe('admin')
+    expect(k('/stats')).toBe('customView')
     expect(k('/stats/more')).toBe(null)
     expect(k('/my-note')).toBe(null)
     expect(getReservedSlugs(withViews).has('reports')).toBe(true)

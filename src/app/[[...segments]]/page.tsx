@@ -5,8 +5,11 @@
  *   /                 website landing page (guests, `user` role, admins with `?v=w`)
  *   / (logged-in admin), /?v=d    Payload dashboard
  *   /login, /forgot, /reset/:token, /logout, /<authCollection>/verify/:token ...   Payload (no admin needed)
- *   /collections/..., /globals/..., /account, custom views                        Payload, admins only
+ *   /collections/..., /globals/..., /account                                      Payload, admins only
+ *   custom views (`config.admin.components.views`)   Payload, for everyone (the view handles its own auth).
+ *                     Checked before notes: a custom view path always wins over a note slug.
  *   /<noteSlug>       the note: editor for logged-in users, read-only for guests
+ *   anything else     404
  *
  * A logged-in non-admin who opens an admins-only Payload page is redirected to `/`.
  * Guests opening one get Payload's own redirect to `/login`.
@@ -76,7 +79,7 @@ const resolveRoute = async (props: Args) => {
 export const generateMetadata = async (props: Args): Promise<Metadata> => {
   const { isAdmin, kind, segments, user } = await resolveRoute(props)
 
-  if (kind === 'public' || ((kind === 'admin' || kind === 'dashboard') && (isAdmin || !user))) {
+  if (kind === 'public' || kind === 'customView' || ((kind === 'admin' || kind === 'dashboard') && (isAdmin || !user))) {
     return generatePayloadPageMetadata({ config: configPromise, ...props })
   }
 
@@ -101,7 +104,7 @@ export default async function Page(props: Args) {
     return PayloadPage({ config: configPromise, ...props, importMap })
   }
 
-  if (kind === 'public') {
+  if (kind === 'public' || kind === 'customView') {
     return PayloadPage({ config: configPromise, ...props, importMap })
   }
 
