@@ -15,6 +15,8 @@ import { codeBlockConverters, type CodeBlockViewerNodeTypes } from '@/features/c
 import { excalidrawConverters, type ExcalidrawViewerNodeTypes } from '@/features/excalidraw/viewer/converter'
 
 import { views } from './config'
+import type { NoteHeaderData } from './note-header/header-data'
+import { NoteHeader } from './note-header/NoteHeader'
 
 // Notion-style read-only styles. Only styles elements inside `.note-page` / `.note-view`.
 import './note-viewer.css'
@@ -166,15 +168,18 @@ const converters: JSXConvertersFunction<NodeTypes> = ({ defaultConverters }) => 
     ...codeBlockConverters,
 })
 
-export const NoteViewer: React.FC<{ note: Note['note'] }> = ({ note }) => {
+export const NoteViewer: React.FC<{ header: NoteHeaderData, note: Note['note'] }> = ({ header, note }) => {
     return (
-        <div className="note-page">
-            <RichText
-                className="note-view"
-                converters={converters}
-                data={note as DefaultTypedEditorState}
-                nodeMap={views.default.nodes}
-            />
-        </div>
+        <article className="note-doc">
+            <NoteHeader header={header} />
+            <div className="note-page">
+                <RichText
+                    className="note-view"
+                    converters={converters}
+                    data={note as DefaultTypedEditorState}
+                    nodeMap={views.default.nodes}
+                />
+            </div>
+        </article>
     )
 }

@@ -27,6 +27,7 @@ import { isAdminUser } from '@/collections/Users'
 import type { Note as NoteType, User } from '@/payload-types'
 import { getPayloadRouteKind } from '@/utilities/isPayloadRoute'
 import { Editor } from '@/views/editor'
+import { getNoteHeaderData } from '@/views/note-header/header-data'
 import { NoteViewer } from '@/views/note-viewer'
 
 import { importMap } from '../importMap'
@@ -120,8 +121,9 @@ export default async function Page(props: Args) {
     if (user) {
       return <Editor key={note.id} id={note.id} note={note.note} user={user} />
     }
-    // Reading layout (width, padding, responsive sizing) lives in note-viewer.css
-    return <NoteViewer note={note.note} />
+    // Reading layout (width, padding, responsive sizing) lives in note-viewer.css; the cover / icon header in
+    // note-header.css. Only plain header values (URL, alt, size) go to the client, not the whole media documents.
+    return <NoteViewer header={getNoteHeaderData(note)} note={note.note} />
   }
 
   notFound()

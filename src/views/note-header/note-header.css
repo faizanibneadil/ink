@@ -1,0 +1,99 @@
+/*
+ * Notion-style page header (src/views/note-header/NoteHeader.tsx), shared by the read-only view and the editor.
+ *
+ * - Cover: full page width, 30% of the screen height (160px – 280px), cropped (`object-fit: cover`).
+ * - Icon: rounded square that overlaps the bottom of the cover by half its height.
+ *   Phones (< 768px): centred. Tablets / desktops: left-aligned with the note's text column.
+ * - Only Payload colour tokens, so light / dark follow the admin theme. Scoped to `.note-header`.
+ */
+
+.note-header {
+  /* Same side padding and column as `.note-page` (note-viewer.css), so the icon lines up with the text */
+  --note-header-gutter: clamp(16px, 5vw, 96px);
+  --note-header-icon-size: 76px;
+  --note-header-icon-radius: 14px;
+
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.note-header *,
+.note-header *::before,
+.note-header *::after {
+  box-sizing: border-box;
+}
+
+.note-header__cover {
+  position: relative;
+  width: 100%;
+  height: clamp(160px, 30vh, 280px);
+  overflow: hidden;
+  background: var(--color-bg-secondary);
+}
+
+.note-header__cover-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.note-header__body {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: calc(720px + 2 * var(--note-header-gutter));
+  margin-inline: auto;
+  padding-inline: var(--note-header-gutter);
+}
+
+/* Icon without a cover: same space above it as the page has above the text */
+.note-header:not(.note-header--has-cover) .note-header__body {
+  padding-top: clamp(32px, 8vh, 96px);
+}
+
+.note-header__icon {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  width: var(--note-header-icon-size);
+  height: var(--note-header-icon-size);
+  overflow: hidden;
+  border-radius: var(--note-header-icon-radius);
+  background: var(--color-bg-secondary);
+  /* Thin ring so a light icon stays visible on a light cover / page */
+  box-shadow:
+    0 0 0 3px var(--color-bg),
+    0 1px 4px rgb(0 0 0 / 0.12);
+}
+
+.note-header--has-cover .note-header__icon {
+  margin-top: calc(var(--note-header-icon-size) / -2);
+}
+
+.note-header__icon-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* The text column starts closer to the header than to the top of an empty page */
+.note-header + .note-page {
+  padding-top: 40px;
+}
+
+.note-header--has-icon + .note-page {
+  padding-top: 20px;
+}
+
+@media (min-width: 768px) {
+  .note-header {
+    --note-header-icon-size: 104px;
+    --note-header-icon-radius: 18px;
+  }
+
+  .note-header__body {
+    justify-content: flex-start;
+  }
+}
