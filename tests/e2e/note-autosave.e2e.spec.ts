@@ -147,12 +147,13 @@ test.describe('Note autosave', () => {
     await expect.poll(async () => JSON.stringify((await stored(page, note.id)).note)).toContain('saved-on-hide')
   })
 
-  test('leaving with an unsaved change asks first, and the change is saved', async ({ page }) => {
+  test('leaving right after typing asks first, and every letter typed is saved', async ({ page }) => {
     const note = await seed.note(`E2E autosave leave ${RUN}`)
     await openNote(page, note)
     await caretAtEnd(page)
     await page.keyboard.type(' saved-on-leave')
-    await expect(status(page)).toHaveAttribute('data-state', 'pending')
+    // Close right away: Payload has not handed the last letters to the autosave yet (it does so in idle time), so the
+    // page must read them from the editor itself
     const dialog = page.waitForEvent('dialog')
     await page.close({ runBeforeUnload: true })
     const shown = await dialog

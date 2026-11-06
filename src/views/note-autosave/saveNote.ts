@@ -1,3 +1,5 @@
+import { runNoteRequest } from '../note-requests'
+
 /** Largest request body the browser accepts with `keepalive` (64 KiB, shared by all keepalive requests). */
 const KEEPALIVE_LIMIT = 60 * 1024
 
@@ -12,7 +14,7 @@ export class NoteSaveError extends Error {
     }
 }
 
-const messageFor = async (response: Response): Promise<string> => {
+export const messageFor = async (response: Response): Promise<string> => {
     if (response.status === 401 || response.status === 403) {
         return 'You are signed out. Sign in again to save.'
     }
@@ -36,20 +38,23 @@ export const saveNoteContent = async (
     { keepalive = false }: { keepalive?: boolean } = {},
 ): Promise<void> => {
     const body = JSON.stringify({ note })
-    let response: Response
-    try {
-        response = await fetch(`/api/notes/${encodeURIComponent(String(id))}?depth=0`, {
-            body,
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            // A bigger body would make a keepalive request fail at once; then it is a normal request
-            keepalive: keepalive && body.length < KEEPALIVE_LIMIT,
-            method: 'PATCH',
-        })
-    } catch {
-        throw new NoteSaveError("Couldn't save. Check your connection.", 0)
-    }
-    if (!response.ok) {
-        throw new NoteSaveError(await messageFor(response), response.status)
-    }
+    // Queued with the cover / icon updates of the same note (../note-requests.ts)
+    return runNoteRequest(id, async () => {
+        let response: Response
+        try {
+            response = await fetch(`/api/notes/${encodeURIComponent(String(id))}?depth=0`, {
+                body,
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                // A bigger body would make a keepalive request fail at once; then it is a normal request
+                keepalive: keepalive && body.length < KEEPALIVE_LIMIT,
+                method: 'PATCH',
+            })
+        } catch {
+            throw new NoteSaveError("Couldn't save. Check your connection.", 0)
+        }
+        if (!response.ok) {
+            throw new NoteSaveError(await messageFor(response), response.status)
+        }
+    })
 }

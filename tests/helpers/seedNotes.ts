@@ -59,6 +59,10 @@ export const createNoteSeeder = () => {
   const getClient = async () => (payload ??= await getPayload({ config }))
 
   return {
+    /** Deletes this record too in `cleanup()` (e.g. a file the page uploaded during a test). */
+    adopt(collection: 'media' | 'notes', id: number) {
+      ;(collection === 'media' ? media : notes).push(id)
+    },
     async cleanup() {
       const client = await getClient()
       for (const id of notes) {

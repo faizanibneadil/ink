@@ -39,8 +39,10 @@
 }
 
 .note-header__body {
+  position: relative;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   width: 100%;
   max-width: calc(720px + 2 * var(--note-header-gutter));
   margin-inline: auto;
@@ -94,6 +96,205 @@
   }
 
   .note-header__body {
-    justify-content: flex-start;
+    align-items: flex-start;
+  }
+
+  /* Button text lines up with the title (the buttons have 8px padding) */
+  .note-header__add {
+    margin-left: -8px;
+  }
+}
+
+/* ---------- Editor only (EditableNoteHeader.tsx) ---------- */
+
+.note-header__control {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.note-header__control:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+.note-header__control:focus-visible,
+.note-header__icon-button:focus-visible {
+  outline: 2px solid var(--color-border-focus, var(--color-text));
+  outline-offset: 2px;
+}
+
+.note-header__control:disabled,
+.note-header__icon-button:disabled {
+  cursor: progress;
+}
+
+/* "Add icon" / "Add cover": shown when the header is hovered or a control has focus, like Notion */
+.note-header__add {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.note-header--has-cover:not(.note-header--has-icon) .note-header__add {
+  margin-top: 12px;
+}
+
+/* On the cover: "Change cover" in the bottom-right corner */
+.note-header__cover-actions {
+  position: absolute;
+  right: var(--note-header-gutter);
+  bottom: 12px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.note-header__cover-actions .note-header__control {
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.16);
+}
+
+.note-header--editable:hover .note-header__add,
+.note-header__add:focus-within,
+.note-header__cover:hover .note-header__cover-actions,
+.note-header__cover-actions:focus-within,
+.note-header--busy .note-header__add,
+.note-header--busy .note-header__cover-actions {
+  opacity: 1;
+}
+
+/* Touch screens have no hover: the controls are always there */
+@media (hover: none) {
+  .note-header__add,
+  .note-header__cover-actions {
+    opacity: 1;
+  }
+}
+
+/* The icon is a button in the editor: same box as the read-only icon */
+.note-header__icon-button {
+  display: block;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.note-header--busy .note-header__cover-image,
+.note-header--busy .note-header__icon-image {
+  opacity: 0.6;
+}
+
+/* ---------- Picker popover (ImagePicker.tsx) ---------- */
+
+.note-image-picker {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: var(--note-header-gutter);
+  left: var(--note-header-gutter);
+  z-index: 30;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 14px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.14);
+}
+
+.note-image-picker__tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.note-image-picker__tab {
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+}
+
+.note-image-picker__tab--active {
+  color: var(--color-text);
+  box-shadow: inset 0 -2px 0 var(--color-text);
+}
+
+.note-image-picker__drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 16px 8px;
+  border: 1px dashed transparent;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.note-image-picker__drop--over {
+  border-color: var(--color-text-tertiary);
+  background: var(--color-bg-secondary);
+}
+
+.note-image-picker__upload {
+  width: 100%;
+  max-width: 320px;
+  height: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.note-image-picker__upload:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+}
+
+.note-image-picker__upload:disabled {
+  cursor: progress;
+}
+
+.note-image-picker__input {
+  display: none;
+}
+
+.note-image-picker__hint {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+.note-image-picker__error {
+  margin: 8px 0 0;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: var(--color-bg-danger-tertiary, transparent);
+  color: var(--color-text-danger);
+  font-size: 13px;
+}
+
+@media (min-width: 768px) {
+  .note-image-picker {
+    right: auto;
+    width: 420px;
+    max-width: calc(100% - 2 * var(--note-header-gutter));
   }
 }

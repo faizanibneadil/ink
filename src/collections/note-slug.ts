@@ -3,52 +3,16 @@ import { type Slugify, slugify, text } from 'payload/shared'
 
 import { getReservedSlugs } from '@/utilities/isPayloadRoute'
 
+import { getNoteFirstLine } from './note-text'
+
+export { getNoteFirstLine }
+
 /** Longest slug, including the `-N` suffix Payload adds when a slug is already taken. */
 export const NOTE_SLUG_MAX_LENGTH = 60
 
 /** Room kept for Payload's dedupe suffix (`-1` ... `-50`). */
 const SUFFIX_ROOM = 4
 const BASE_MAX_LENGTH = NOTE_SLUG_MAX_LENGTH - SUFFIX_ROOM
-
-type LexicalNodeLike = {
-    children?: unknown
-    text?: unknown
-    type?: unknown
-}
-
-const isObject = (value: unknown): value is Record<string, unknown> =>
-    typeof value === 'object' && value !== null && !Array.isArray(value)
-
-/** All text inside a node (e.g. a paragraph with bold, italic or link parts). */
-const getNodeText = (node: LexicalNodeLike): string => {
-    if (typeof node.text === 'string') {
-        return node.text
-    }
-    if (!Array.isArray(node.children)) {
-        return ''
-    }
-    return node.children.map((child) => (isObject(child) ? getNodeText(child) : '')).join('')
-}
-
-/**
- * Text of the note's first heading or paragraph that has text, from the saved Lexical editor state.
- * Other nodes (lists, quotes, tables, drawings, code blocks...) are skipped.
- */
-export const getNoteFirstLine = (editorState: unknown): string => {
-    if (!isObject(editorState) || !isObject(editorState.root) || !Array.isArray(editorState.root.children)) {
-        return ''
-    }
-    for (const node of editorState.root.children) {
-        if (!isObject(node) || (node.type !== 'heading' && node.type !== 'paragraph')) {
-            continue
-        }
-        const text = getNodeText(node).trim()
-        if (text) {
-            return text
-        }
-    }
-    return ''
-}
 
 /**
  * Makes a slug from text with Payload's own rules (English letters, numbers, `-` and `_`),

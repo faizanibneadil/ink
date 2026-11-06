@@ -109,11 +109,13 @@ test.describe('Note page editor (logged in)', () => {
     await expect(page.locator('.note-page--editor').getByText("Type '/' for commands")).toBeVisible()
   })
 
-  test('header (cover + icon) is shown above the editor, without edit controls yet', async ({ page }) => {
+  test('header (cover + icon) is shown above the editor, with its edit controls', async ({ page }) => {
     await openEditor(page, note)
     await expect(page.locator('[data-testid="note-cover"] img')).toHaveAttribute('src', cover.url as string)
     await expect(page.locator('[data-testid="note-icon"] img')).toHaveAttribute('src', icon.url as string)
-    await expect(page.getByTestId('note-header').locator('button, input')).toHaveCount(0)
+    // Editing the header is tested in note-header-edit.e2e.spec.ts
+    await expect(page.getByRole('button', { name: 'Change icon' })).toBeVisible()
+    await expect(page.getByTestId('change-cover')).toBeAttached()
   })
 
   for (const viewport of [
