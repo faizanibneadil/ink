@@ -4,11 +4,15 @@ import { CollectionConfig } from "payload";
 import { CodeBlockFeature } from "@/features/code-block";
 import { ExcalidrawFeature } from "@/features/excalidraw";
 
+import { ACCEPTED_IMAGE_TYPES } from "./media-rules";
 import { COVER_POSITION_DEFAULT, COVER_POSITION_MAX, COVER_POSITION_MIN } from "./note-header";
 import { slugifyNote, validateNoteSlug } from "./note-slug";
 
-/** Only images can be a note's cover or icon (checked by Payload on the server too, not only in the picker). */
-const imagesOnly = { mimeType: { contains: 'image/' } }
+/**
+ * Only images the Media collection accepts can be a note's cover or icon (checked by Payload on the server too, not
+ * only in the picker). An exact list, not "image/*": an SVG uploaded before Media was limited to images stays refused.
+ */
+const imagesOnly = { mimeType: { in: [...ACCEPTED_IMAGE_TYPES] } }
 
 export const Notes: CollectionConfig = {
     slug: "notes",

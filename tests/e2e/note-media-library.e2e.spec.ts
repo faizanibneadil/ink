@@ -82,14 +82,10 @@ test.describe('Uploaded images in the drawer', () => {
     await expect(page.locator('[data-testid="note-icon"] img')).toHaveAttribute('src', second.url as string)
   })
 
-  test('only images are offered (no SVG, no other files), newest first, one page at a time', async ({ page }) => {
-    const svg = await seed.mediaFromBuffer(
-      Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>'),
-      `e2e-${RUN}.svg`,
-      'image/svg+xml',
-      `E2E svg ${RUN}`,
-    )
-    const text = await seed.mediaFromBuffer(Buffer.from('plain text'), `e2e-${RUN}.txt`, 'text/plain', `E2E text ${RUN}`)
+  test('only images are offered (older SVG / other files are not), newest first, one page at a time', async ({ page }) => {
+    // Media accepts images only now; an SVG / text file can only be an older row, from before that
+    const svg = await seed.legacyMedia('image/svg+xml', `E2E svg ${RUN}`)
+    const text = await seed.legacyMedia('text/plain', `E2E text ${RUN}`)
     const note = await seed.note(`E2E library filter ${RUN}`)
     await openLibrary(page, note)
     await expect(grid(page)).toBeVisible()

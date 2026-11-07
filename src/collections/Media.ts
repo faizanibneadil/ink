@@ -1,6 +1,8 @@
-import type { CollectionAfterDeleteHook, CollectionConfig } from 'payload'
+import type { CollectionAfterDeleteHook, CollectionBeforeOperationHook, CollectionConfig } from 'payload'
 
-import { createFolderField, createTagField } from 'payload'
+import { createFolderField, createTagField, ValidationError } from 'payload'
+
+import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES, TOO_LARGE_MESSAGE } from './media-rules'
 
 /** Note fields that point to a media file (the Notion-style page header, src/collections/notes.ts). */
 const NOTE_MEDIA_FIELDS = ['cover', 'icon'] as const
@@ -22,10 +24,25 @@ const clearNoteReferences: CollectionAfterDeleteHook = async ({ id, req }) => {
   }
 }
 
+/**
+ * Refuses files over 10 MB on every create / update that carries a file (REST, admin, local API), before anything is
+ * stored. The file type is checked by Payload itself (`upload.mimeTypes` below), from the file's content.
+ */
+const limitFileSize: CollectionBeforeOperationHook = ({ args, req }) => {
+  const file = req.file
+  if (!file) return args
+  const size = typeof file.size === 'number' ? file.size : (file.data?.length ?? 0)
+  if (size > MAX_IMAGE_BYTES) {
+    throw new ValidationError({ errors: [{ message: TOO_LARGE_MESSAGE, path: 'file' }] }, req.t)
+  }
+  return args
+}
+
 export const Media: CollectionConfig = {
   slug: 'media',
   hooks: {
     afterDelete: [clearNoteReferences],
+    beforeOperation: [limitFileSize],
   },
   access: {
     read: () => true,
@@ -39,5 +56,9 @@ export const Media: CollectionConfig = {
     createFolderField({ relationTo: 'folders' }),
     createTagField({ relationTo: 'tags' }),
   ],
-  upload: true,
+  upload: {
+    // Images only, for everyone (admins too). Payload checks the file's content, not only its name / declared type,
+    // so a renamed file is refused as well. SVG is not allowed (it can carry scripts). See ./media-rules.ts
+    mimeTypes: [...ACCEPTED_IMAGE_TYPES],
+  },
 }

@@ -1,3 +1,5 @@
+// @vitest-environment node
+// Server code (Payload local API, uploads): Node, not jsdom (file type detection needs Node's own Buffer)
 import { getPayload, type Payload, type RequiredDataFromCollectionSlug } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
@@ -80,6 +82,7 @@ describe('Notes: cover, icon, cover position', () => {
   let image: Media
   let image2: Media
   let textFile: Media
+  let svgFile: Media
 
   beforeAll(async () => {
     payload = await getPayload({ config: await config })
@@ -90,7 +93,14 @@ describe('Notes: cover, icon, cover position', () => {
     })) as User
     image = await createMedia(`${RUN}-a.png`, PNG, 'image/png')
     image2 = await createMedia(`${RUN}-b.png`, PNG, 'image/png')
-    textFile = await createMedia(`${RUN}.txt`, Buffer.from('not an image'), 'text/plain')
+    // Media accepts images only now; a text file / SVG can only be an older row from before that: simulate one
+    const legacy = async (name: string, mimeType: string) => {
+      const doc = await createMedia(`${RUN}-${name}.png`, PNG, 'image/png')
+      await payload.db.updateOne({ collection: 'media', data: { mimeType }, id: doc.id, req: undefined })
+      return { ...doc, mimeType }
+    }
+    textFile = await legacy('text', 'text/plain')
+    svgFile = await legacy('svg', 'image/svg+xml')
   })
 
   afterAll(async () => {
@@ -138,14 +148,16 @@ describe('Notes: cover, icon, cover position', () => {
     expect(typeof found.cover === 'object' && found.cover?.mimeType).toBe('image/png')
   })
 
-  it('rejects a non-image file as cover or icon', async () => {
+  it('rejects a non-image file or an SVG (older media rows) as cover or icon', async () => {
     const note = await createNote(`${RUN} non image`)
-    await expect(
-      payload.update({ collection: 'notes', data: { cover: textFile.id }, id: note.id, overrideAccess: true }),
-    ).rejects.toThrow()
-    await expect(
-      payload.update({ collection: 'notes', data: { icon: textFile.id }, id: note.id, overrideAccess: true }),
-    ).rejects.toThrow()
+    for (const file of [textFile, svgFile]) {
+      await expect(
+        payload.update({ collection: 'notes', data: { cover: file.id }, id: note.id, overrideAccess: true }),
+      ).rejects.toThrow()
+      await expect(
+        payload.update({ collection: 'notes', data: { icon: file.id }, id: note.id, overrideAccess: true }),
+      ).rejects.toThrow()
+    }
     const found = await payload.findByID({ collection: 'notes', depth: 0, id: note.id, overrideAccess: true })
     expect(found.cover ?? null).toBeNull()
     expect(found.icon ?? null).toBeNull()

@@ -150,16 +150,16 @@ export const createNoteSeeder = () => {
       media.push(doc.id)
       return doc
     },
-    /** A media file from bytes (e.g. a text file or an SVG, to check they are never offered as images). */
-    async mediaFromBuffer(data: Buffer, name: string, mimetype: string, alt: string): Promise<Media> {
-      const doc = await (await getClient()).create({
-        collection: 'media',
-        data: { alt },
-        file: { data, mimetype, name, size: data.length },
-        overrideAccess: true,
-      })
+    /**
+     * A media row with a type Media no longer accepts (e.g. a text file or an SVG), as left by an upload from before
+     * Media was limited to images: a PNG is uploaded, then its stored type is changed in the database directly.
+     */
+    async legacyMedia(mimeType: string, alt: string): Promise<Media> {
+      const client = await getClient()
+      const doc = await client.create({ collection: 'media', data: { alt }, filePath: FIXTURE_IMAGES.icon, overrideAccess: true })
       media.push(doc.id)
-      return doc
+      await client.db.updateOne({ collection: 'media', data: { mimeType }, id: doc.id })
+      return { ...doc, mimeType }
     },
     /** A note with exactly this content (e.g. from `noteWithCodeBlock`). */
     async noteWithContent(note: Note['note']): Promise<Note> {

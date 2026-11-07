@@ -1,5 +1,7 @@
 import type { Media, Note } from '@/payload-types'
 
+import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES, TOO_LARGE_MESSAGE } from '@/collections/media-rules'
+
 import { messageFor } from '../note-autosave/saveNote'
 import { runNoteRequest } from '../note-requests'
 import { type NoteHeaderImage, toHeaderImage } from './header-data'
@@ -7,9 +9,8 @@ import { type NoteHeaderImage, toHeaderImage } from './header-data'
 /** The two header images of a note. */
 export type HeaderImageField = 'cover' | 'icon'
 
-/** Image types the picker accepts (no SVG: it can carry scripts and is served from this site). */
-export const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/avif'] as const
-export const MAX_IMAGE_BYTES = 10 * 1024 * 1024
+// Same rules as the server (the Media collection refuses anything else too)
+export { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES } from '@/collections/media-rules'
 
 export class HeaderImageError extends Error {
     constructor(message: string) {
@@ -27,7 +28,7 @@ export const validateImageFile = (file: Pick<File, 'size' | 'type'>): null | str
         return 'This file is empty.'
     }
     if (file.size > MAX_IMAGE_BYTES) {
-        return 'This image is too large. The maximum is 10 MB.'
+        return TOO_LARGE_MESSAGE
     }
     return null
 }

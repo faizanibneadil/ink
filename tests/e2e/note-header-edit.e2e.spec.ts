@@ -253,6 +253,9 @@ test.describe('Edit the note header', () => {
   test('keyboard only: Tab moves inside the drawer (focus stays in it) and "Select a file" opens the file chooser', async ({ page }) => {
     const note = await seed.note(`E2E header tab ${RUN}`)
     const uploads = trackUploads(page)
+    // Listen from the start: Playwright turns on file chooser interception asynchronously, so a listener added just
+    // before the key press can miss a chooser that opens right away
+    const chooser = page.waitForEvent('filechooser', { timeout: 60000 })
     await openNote(page, note)
     await header(page).hover()
     await page.getByTestId('add-cover').focus()
@@ -268,7 +271,6 @@ test.describe('Edit the note header', () => {
     expect(await page.evaluate(() => Boolean(document.activeElement?.closest('.note-image-drawer')))).toBe(true)
 
     await select.focus()
-    const chooser = page.waitForEvent('filechooser')
     await page.keyboard.press('Enter')
     await (await chooser).setFiles(FIXTURE_IMAGES.cover)
     await expect(drawer(page)).toHaveCount(0, { timeout: 20000 })

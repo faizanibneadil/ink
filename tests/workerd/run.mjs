@@ -500,6 +500,27 @@ async function userScenario(browser, base, config) {
     const coverRow = sql(config, "SELECT cover_id FROM notes WHERE slug = 'hello-world'")
     check('user uploads a cover → notes.cover_id set in D1', Boolean(coverRow[0]?.cover_id), JSON.stringify(coverRow))
 
+    // Media accepts images only, on the server: an SVG and a text file disguised as a PNG are refused by the Worker
+    const mediaBefore = sql(config, 'SELECT COUNT(*) AS n FROM media')[0]?.n
+    const refused = await page.evaluate(async () => {
+      const send = async (content, type, name) => {
+        const form = new FormData()
+        form.append('file', new File([content], name, { type }))
+        form.append('_payload', JSON.stringify({ alt: name }))
+        return (await fetch('/api/media', { body: form, credentials: 'include', method: 'POST' })).status
+      }
+      return [
+        await send('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>', 'image/svg+xml', 'x.svg'),
+        await send('plain text', 'image/png', 'x.png'),
+      ]
+    })
+    const mediaAfter = sql(config, 'SELECT COUNT(*) AS n FROM media')[0]?.n
+    check(
+      'user uploads an SVG / a disguised text file → refused (400), nothing stored in D1',
+      refused.every((status) => status === 400) && mediaAfter === mediaBefore,
+      `statuses ${JSON.stringify(refused)}, media rows ${mediaBefore} → ${mediaAfter}`,
+    )
+
     // Notion code block (lazy chunk) instead of Monaco: insert with "/code", type, saved to D1
     const monaco = []
     page.on('request', (request) => /monaco/i.test(request.url()) && monaco.push(request.url()))
