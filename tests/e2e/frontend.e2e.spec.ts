@@ -1,39 +1,62 @@
 import { expect, test } from '@playwright/test'
 
+import { deleteAccount, loginAs, seedAccount, type TestAccount } from '../helpers/loginAs'
+
+/*
+ * The website's home page (`/`, src/app/[[...segments]]/page.tsx): the landing page for guests and members. Admins get
+ * the Payload dashboard there instead (see admin.e2e.spec.ts).
+ *
+ * The site runs inside Payload's RootLayout on purpose: the note pages use Payload's font and colour tokens (light /
+ * dark theme), so Payload's fonts and styles being present on `/` is expected and not tested against.
+ */
+
+const BASE = 'http://localhost:3000'
+const member: TestAccount = {
+  password: 'e2e-pass-1234',
+  role: 'user',
+  username: `e2e-frontend-${Date.now().toString(36)}`,
+}
+
 test.describe('Frontend', () => {
   test('can go on homepage', async ({ page }) => {
-    await page.goto('http://localhost:3000')
+    await page.goto(BASE)
 
-    await expect(page).toHaveTitle(/Payload Blank Template/)
-
-    const heading = page.locator('h1').first()
-
-    await expect(heading).toHaveText('Welcome to your new project.')
+    await expect(page).toHaveTitle('Website Lending Page')
+    await expect(page.getByText('Website Lending Page')).toBeVisible()
   })
 
-  test('should not load Payload admin styles or fonts', async ({ page }) => {
-    await page.goto('http://localhost:3000')
+  test('guests get the website, not the Payload admin (no dashboard, no login redirect)', async ({ page }) => {
+    const response = await page.goto(BASE)
 
-    const payloadFontFamily = await page.evaluate(() =>
-      getComputedStyle(document.documentElement).getPropertyValue('--font-family-sans').trim(),
-    )
-
-    expect(payloadFontFamily).toBe('')
-    await expect(page.locator('link[href*="fonts.googleapis.com"]')).toHaveCount(0)
+    expect(response?.status()).toBe(200)
+    await expect(page).toHaveURL(`${BASE}/`)
+    await expect(page.locator('.dashboard')).toHaveCount(0)
+    await expect(page.locator('form.login__form')).toHaveCount(0)
+    await expect(page.locator('[contenteditable="true"]')).toHaveCount(0)
   })
 
-  test('should not load Payload component styles', async ({ page }) => {
-    await page.goto('http://localhost:3000')
+  test('the homepage loads without errors', async ({ page }) => {
+    const problems: string[] = []
+    page.on('pageerror', (error) => problems.push(`page error: ${error.message}`))
+    page.on('response', (response) => {
+      if (response.status() >= 400) problems.push(`${response.status()} ${response.url()}`)
+    })
 
-    const sentinel = page.locator('[data-test="payload-ui-barrel-sentinel"]')
+    await page.goto(BASE)
+    await page.waitForLoadState('networkidle')
 
-    await expect(sentinel).toBeVisible()
-    await expect
-      .poll(() =>
-        sentinel.evaluate((element) =>
-          getComputedStyle(element).getPropertyValue('--payload-ui-barrel-loaded').trim(),
-        ),
-      )
-      .toBe('')
+    expect(problems).toEqual([])
+  })
+
+  test('a logged-in member (user role) also gets the website on /', async ({ page }) => {
+    await seedAccount(member)
+    await loginAs(page, member)
+
+    await page.goto(BASE)
+    await expect(page).toHaveURL(`${BASE}/`)
+    await expect(page.getByText('Website Lending Page')).toBeVisible()
+    await expect(page.locator('.dashboard')).toHaveCount(0)
+
+    await deleteAccount(member.username)
   })
 })

@@ -402,8 +402,33 @@ test.describe('Edit the note header', () => {
     await expect(page.getByTestId('note-header-add')).toHaveCSS('opacity', '1')
     await page.getByTestId('add-cover').tap()
     await expect(drawer(page)).toBeVisible()
-    const box = (await page.locator('.note-image-drawer .drawer__content').boundingBox())!
-    expect(box).toEqual({ height: 844, width: 390, x: 0, y: 0 })
+    // Covers the whole screen, measured in the page at the same moment: full width from the top, at least as tall as
+    // the screen. Like every Payload drawer, it grows with its content (many images) and Payload's modal container
+    // scrolls it, so everything stays reachable.
+    const fit = await page.locator('.note-image-drawer .drawer__content').evaluate((panel) => {
+      const box = panel.getBoundingClientRect()
+      const container = panel.closest('.payload__modal-container')!
+      return {
+        containerHeight: container.clientHeight,
+        containerScroll: container.scrollHeight,
+        overflow: getComputedStyle(container).overflowY,
+        panel: { height: Math.round(box.height), width: Math.round(box.width), x: Math.round(box.x), y: Math.round(box.y) },
+        screen: { height: window.innerHeight, width: window.innerWidth },
+      }
+    })
+    expect(fit.screen.width).toBe(390)
+    expect({ width: fit.panel.width, x: fit.panel.x, y: fit.panel.y }).toEqual({ width: fit.screen.width, x: 0, y: 0 })
+    expect(fit.panel.height).toBeGreaterThanOrEqual(fit.screen.height)
+    expect(fit.containerHeight).toBe(fit.screen.height)
+    if (fit.panel.height > fit.screen.height) {
+      expect(fit.overflow).toBe('auto')
+      expect(fit.containerScroll).toBeGreaterThanOrEqual(fit.panel.height)
+    }
+    // The last control of the drawer can be reached (scrolled to) and used
+    const last = drawer(page).locator('button').last()
+    await last.scrollIntoViewIfNeeded()
+    const lastBox = (await last.boundingBox())!
+    expect(lastBox.y + lastBox.height).toBeLessThanOrEqual(fit.screen.height)
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
     await page.locator('.note-image-drawer .drawer__header__close').tap()
     await expect(drawer(page)).toHaveCount(0)

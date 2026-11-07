@@ -1,53 +1,37 @@
 import { getPayload } from 'payload'
+
 import type { User } from '../../src/payload-types.js'
 import config from '../../src/payload.config.js'
 
-export const testUser: Pick<User, 'email' | 'role' | 'username'> & { email: string; password: string } = {
-  email: 'dev@payloadcms.com',
+/**
+ * Admin used by the admin e2e tests. Users log in with their username (`loginWithUsername`, email login is off, see
+ * src/collections/Users.ts), so the user is identified by username; no email is needed. Unique per run, so a test run
+ * never touches a real account.
+ */
+export const testUser: Pick<User, 'role' | 'username'> & { password: string } = {
   // The Payload admin is admins-only (see src/app/[[...segments]]/page.tsx)
   role: 'admin',
-  password: 'test',
-  username: 'dev',
+  password: 'e2e-admin-pass-1234',
+  username: `e2e-admin-${Date.now().toString(36)}`,
 }
 
-/**
- * Seeds a test user for e2e admin tests.
- */
-export async function seedTestUser(): Promise<void> {
+const removeTestUser = async () => {
   const payload = await getPayload({ config })
-
-  // Delete existing test user if any
   await payload.delete({
     collection: 'users',
-    where: {
-      email: {
-        equals: testUser.email,
-      },
-    },
     overrideAccess: true,
-  })
-
-  // Create fresh test user
-  await payload.create({
-    collection: 'users',
-    data: testUser,
-    overrideAccess: true,
+    where: { username: { equals: testUser.username } },
   })
 }
 
-/**
- * Cleans up test user after tests
- */
+/** Seeds the admin for the e2e admin tests (re-created if it exists), optionally with an email address. */
+export async function seedTestUser(extra: { email?: string } = {}): Promise<void> {
+  await removeTestUser()
+  const payload = await getPayload({ config })
+  await payload.create({ collection: 'users', data: { ...testUser, ...extra }, overrideAccess: true })
+}
+
+/** Removes the test admin after the tests. */
 export async function cleanupTestUser(): Promise<void> {
-  const payload = await getPayload({ config })
-
-  await payload.delete({
-    collection: 'users',
-    where: {
-      email: {
-        equals: testUser.email,
-      },
-    },
-    overrideAccess: true,
-  })
+  await removeTestUser()
 }
