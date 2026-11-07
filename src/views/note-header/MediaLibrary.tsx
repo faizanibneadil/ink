@@ -16,7 +16,7 @@ type State =
     | { status: 'loading' }
     | { docs: Media[]; hasNextPage: boolean; loadingMore: boolean; moreError: null | string; page: number; status: 'ready' }
 
-/** The picker's "Media library" tab: images already uploaded, newest first, as a grid. Picking one sets it. */
+/** The drawer's "Uploaded images": images already uploaded, newest first, as a grid. Picking one sets it. */
 export const MediaLibrary: React.FC<Props> = ({ busy, onPick }) => {
     const [state, setState] = useState<State>({ status: 'loading' })
     const alive = useRef(true)
@@ -80,7 +80,7 @@ export const MediaLibrary: React.FC<Props> = ({ busy, onPick }) => {
         return (
             <div className="note-media-library__message" data-testid="media-library-error" role="alert">
                 <p>{state.error}</p>
-                <button className="note-image-picker__upload" onClick={() => void load()} type="button">
+                <button className="note-image-drawer__button" onClick={() => void load()} type="button">
                     Try again
                 </button>
             </div>
@@ -89,7 +89,7 @@ export const MediaLibrary: React.FC<Props> = ({ busy, onPick }) => {
     if (state.docs.length === 0) {
         return (
             <p className="note-media-library__message" data-testid="media-library-empty">
-                No images yet. Upload one in the Upload tab.
+                No images yet. Upload one above.
             </p>
         )
     }
@@ -118,12 +118,12 @@ export const MediaLibrary: React.FC<Props> = ({ busy, onPick }) => {
             {state.hasNextPage || state.moreError ? (
                 <div className="note-media-library__more">
                     {state.moreError ? (
-                        <p className="note-image-picker__error" role="alert">
+                        <p className="note-image-drawer__error" role="alert">
                             {state.moreError}
                         </p>
                     ) : null}
                     <button
-                        className="note-image-picker__upload"
+                        className="note-image-drawer__button"
                         disabled={state.loadingMore}
                         onClick={() => void loadMore()}
                         type="button"

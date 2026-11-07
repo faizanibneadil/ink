@@ -149,12 +149,12 @@ test.describe('Cover reposition', () => {
     expect(await storedPosition(page, note.id)).toBe(50)
   })
 
-  test('the picker and "Change cover" are not offered while repositioning', async ({ page }) => {
+  test('the drawer and "Change cover" are not offered while repositioning', async ({ page }) => {
     const note = await seed.note(`E2E reposition modes ${RUN}`, { cover: cover.id })
     await openNote(page, note)
     await startReposition(page)
     await expect(page.getByTestId('change-cover')).toHaveCount(0)
     await expect(page.getByTestId('reposition-cover')).toHaveCount(0)
-    await expect(page.getByTestId('note-image-picker')).toHaveCount(0)
+    await expect(page.getByTestId('note-image-drawer')).toHaveCount(0)
   })
 })

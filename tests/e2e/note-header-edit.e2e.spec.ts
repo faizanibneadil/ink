@@ -28,8 +28,25 @@ test.afterAll(async () => {
 })
 
 const header = (page: Page) => page.getByTestId('note-header')
-const picker = (page: Page) => page.getByTestId('note-image-picker')
-const fileInput = (page: Page) => picker(page).locator('input[type="file"]')
+// The image drawer (src/views/note-header/ImageDrawer.tsx, Payload's Drawer)
+const drawer = (page: Page) => page.getByTestId('note-image-drawer')
+const drawerTitle = (page: Page) => page.locator('.note-image-drawer .drawer__header__title')
+const fileInput = (page: Page) => drawer(page).locator('input[type="file"]')
+const dropzone = (page: Page) => drawer(page).locator('.dropzone')
+
+/** Drops a file on the drawer's Payload Dropzone, the way a browser does (a `drop` event with the file). */
+const dropFile = async (page: Page, file: { buffer: Buffer; mimeType: string; name: string }) => {
+  const dataTransfer = await page.evaluateHandle(({ base64, mimeType, name }) => {
+    const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0))
+    const transfer = new DataTransfer()
+    transfer.items.add(new File([bytes], name, { type: mimeType }))
+    return transfer
+  }, { base64: file.buffer.toString('base64'), mimeType: file.mimeType, name: file.name })
+  await dropzone(page).dispatchEvent('dragenter', { dataTransfer })
+  await dropzone(page).dispatchEvent('dragover', { dataTransfer })
+  await dropzone(page).dispatchEvent('drop', { dataTransfer })
+}
+const png = (path: string, name: string) => ({ buffer: fs.readFileSync(path), mimeType: 'image/png', name })
 const editable = (page: Page) => page.locator('.note-page--editor [contenteditable="true"]')
 
 /** Media files the page uploads, so the test removes them afterwards. */
@@ -67,17 +84,22 @@ test.describe('Edit the note header', () => {
     await expect(page.getByTestId('add-icon')).toBeVisible()
 
     await page.getByTestId('add-cover').click()
-    await expect(picker(page)).toBeVisible()
-    await expect(picker(page).getByRole('tab', { name: 'Upload' })).toBeVisible()
+    await expect(drawer(page)).toBeVisible()
+    await expect(drawerTitle(page)).toHaveText('Change cover')
+    await expect(drawer(page).getByRole('button', { name: 'Select a file' })).toBeVisible()
+    await expect(drawer(page).getByRole('heading', { name: 'Uploaded images' })).toBeVisible()
     await fileInput(page).setInputFiles(FIXTURE_IMAGES.cover)
-    await expect(picker(page)).toHaveCount(0, { timeout: 20000 })
+    await expect(drawer(page)).toHaveCount(0, { timeout: 20000 })
     await expect(page.locator('[data-testid="note-cover"] img')).toHaveAttribute('src', /\/api\/media\/file\//)
 
     await header(page).hover()
     await page.getByTestId('add-icon').click()
+    await expect(drawerTitle(page)).toHaveText('Change icon')
     await fileInput(page).setInputFiles(FIXTURE_IMAGES.icon)
-    await expect(picker(page)).toHaveCount(0, { timeout: 20000 })
+    await expect(drawer(page)).toHaveCount(0, { timeout: 20000 })
     await expect(page.locator('[data-testid="note-icon"] img')).toHaveAttribute('src', /\/api\/media\/file\//)
+    // "Add icon" is gone: focus moves to the new icon (not to the top of the page)
+    await expect(page.getByTestId('note-icon')).toBeFocused()
     // Both set: no "Add …" buttons left
     await expect(page.getByTestId('note-header-add')).toHaveCount(0)
 
@@ -108,13 +130,15 @@ test.describe('Edit the note header', () => {
 
     await page.getByTestId('note-cover').hover()
     await page.getByTestId('change-cover').click()
+    await expect(drawerTitle(page)).toHaveText('Change cover')
     await fileInput(page).setInputFiles(FIXTURE_IMAGES.icon)
-    await expect(picker(page)).toHaveCount(0, { timeout: 20000 })
+    await expect(drawer(page)).toHaveCount(0, { timeout: 20000 })
     await expect(page.locator('[data-testid="note-cover"] img')).toHaveAttribute('src', uploads[0].url as string)
 
-    await page.getByRole('button', { name: 'Change icon' }).click()
+    await page.getByTestId('note-icon').click()
+    await expect(drawerTitle(page)).toHaveText('Change icon')
     await fileInput(page).setInputFiles(FIXTURE_IMAGES.cover)
-    await expect(picker(page)).toHaveCount(0, { timeout: 20000 })
+    await expect(drawer(page)).toHaveCount(0, { timeout: 20000 })
     await expect(page.locator('[data-testid="note-icon"] img')).toHaveAttribute('src', uploads[1].url as string)
 
     const saved = await storedNote(page, note.id)
@@ -130,27 +154,35 @@ test.describe('Edit the note header', () => {
       if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/media') mediaRequests++
     })
     await openNote(page, note)
+    // Refused in the drawer: the header never even shows a preview of the file (no image ever appears in it)
+    await header(page).evaluate((element) => {
+      ;(window as unknown as { headerImages: number }).headerImages = 0
+      new MutationObserver(() => {
+        if (element.querySelector('img')) (window as unknown as { headerImages: number }).headerImages++
+      }).observe(element, { childList: true, subtree: true })
+    })
     await header(page).hover()
     await page.getByTestId('add-cover').click()
 
     await fileInput(page).setInputFiles({ buffer: Buffer.from('not an image'), mimeType: 'text/plain', name: 'notes.txt' })
-    await expect(picker(page).getByRole('alert')).toHaveText('Choose an image file (PNG, JPEG, GIF, WebP or AVIF).')
+    await expect(drawer(page).getByRole('alert')).toHaveText('Choose an image file (PNG, JPEG, GIF, WebP or AVIF).')
 
     await fileInput(page).setInputFiles({
       buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'),
       mimeType: 'image/svg+xml',
       name: 'icon.svg',
     })
-    await expect(picker(page).getByRole('alert')).toHaveText('Choose an image file (PNG, JPEG, GIF, WebP or AVIF).')
+    await expect(drawer(page).getByRole('alert')).toHaveText('Choose an image file (PNG, JPEG, GIF, WebP or AVIF).')
 
     const big = Buffer.alloc(10 * 1024 * 1024 + 1)
     fs.readFileSync(FIXTURE_IMAGES.icon).copy(big)
     await fileInput(page).setInputFiles({ buffer: big, mimeType: 'image/png', name: 'huge.png' })
-    await expect(picker(page).getByRole('alert')).toHaveText('This image is too large. The maximum is 10 MB.')
+    await expect(drawer(page).getByRole('alert')).toHaveText('This image is too large. The maximum is 10 MB.')
 
     expect(mediaRequests).toBe(0)
     expect(uploads).toHaveLength(0)
     await expect(page.getByTestId('note-cover')).toHaveCount(0)
+    expect(await page.evaluate(() => (window as unknown as { headerImages: number }).headerImages)).toBe(0)
   })
 
   test('if the note cannot be updated: the old header comes back, an error shows, the uploaded file is removed', async ({ page }) => {
@@ -170,35 +202,152 @@ test.describe('Edit the note header', () => {
     await page.getByTestId('add-cover').click()
     await fileInput(page).setInputFiles(FIXTURE_IMAGES.cover)
 
-    await expect(picker(page).getByRole('alert')).toHaveText('Something went wrong.', { timeout: 20000 })
+    await expect(drawer(page).getByRole('alert')).toHaveText('Something went wrong.', { timeout: 20000 })
     await expect(page.getByTestId('note-cover')).toHaveCount(0)
     expect(uploads).toHaveLength(1)
     await expect.poll(() => deleted).toContain(`/api/media/${uploads[0].id}`)
     await expect.poll(async () => (await page.request.get(`${BASE}/api/media/${uploads[0].id}`)).status()).toBe(404)
     expect((await storedNote(page, note.id)).cover ?? null).toBeNull()
 
+    // Closed and opened again: starts clean, without the old error
+    await page.keyboard.press('Escape')
+    await expect(drawer(page)).toHaveCount(0)
+    await header(page).hover()
+    await page.getByTestId('add-cover').click()
+    await expect(drawer(page)).toBeVisible()
+    await expect(drawer(page).getByRole('alert')).toHaveCount(0)
+
     // Works again once the server is fine
     await page.unroute('**/api/notes/*')
     await fileInput(page).setInputFiles(FIXTURE_IMAGES.cover)
-    await expect(picker(page)).toHaveCount(0, { timeout: 20000 })
+    await expect(drawer(page)).toHaveCount(0, { timeout: 20000 })
     await expect(page.getByTestId('note-cover')).toBeVisible()
   })
 
-  test('Escape closes the picker and gives focus back to the button; a click outside closes it too', async ({ page }) => {
+  test('Escape, the close button and a click beside the drawer close it; focus goes back to the button', async ({ page }) => {
     const note = await seed.note(`E2E header keyboard ${RUN}`)
     await openNote(page, note)
     await header(page).hover()
     await page.getByTestId('add-icon').click()
-    await expect(picker(page)).toBeVisible()
-    await expect(picker(page).getByRole('button', { name: 'Upload file' })).toBeFocused()
+    await expect(drawer(page)).toBeVisible()
+    // Payload's drawer: its title is focused and names the dialog
+    await expect(drawerTitle(page)).toBeFocused()
+    await expect(page.getByRole('dialog', { name: 'Change icon' })).toBeVisible()
     await page.keyboard.press('Escape')
-    await expect(picker(page)).toHaveCount(0)
+    await expect(drawer(page)).toHaveCount(0)
     await expect(page.getByTestId('add-icon')).toBeFocused()
 
     await page.getByTestId('add-icon').click()
-    await expect(picker(page)).toBeVisible()
-    await editable(page).click()
-    await expect(picker(page)).toHaveCount(0)
+    await page.locator('.note-image-drawer .drawer__header__close').click()
+    await expect(drawer(page)).toHaveCount(0)
+    await expect(page.getByTestId('add-icon')).toBeFocused()
+
+    await page.getByTestId('add-icon').click()
+    await expect(drawer(page)).toBeVisible()
+    await page.mouse.click(40, 400)
+    await expect(drawer(page)).toHaveCount(0)
+    // Nothing changed
+    await expect(page.getByTestId('note-icon')).toHaveCount(0)
+  })
+
+  test('keyboard only: Tab moves inside the drawer (focus stays in it) and "Select a file" opens the file chooser', async ({ page }) => {
+    const note = await seed.note(`E2E header tab ${RUN}`)
+    const uploads = trackUploads(page)
+    await openNote(page, note)
+    await header(page).hover()
+    await page.getByTestId('add-cover').focus()
+    await page.keyboard.press('Enter')
+    await expect(drawerTitle(page)).toBeFocused()
+    const select = drawer(page).getByRole('button', { name: 'Select a file' })
+    for (let step = 0; step < 6 && !(await select.evaluate((element) => element === document.activeElement)); step++) {
+      await page.keyboard.press('Tab')
+    }
+    await expect(select).toBeFocused()
+    // Focus is trapped: many Tabs never leave the drawer
+    for (let step = 0; step < 12; step++) await page.keyboard.press('Tab')
+    expect(await page.evaluate(() => Boolean(document.activeElement?.closest('.note-image-drawer')))).toBe(true)
+
+    await select.focus()
+    const chooser = page.waitForEvent('filechooser')
+    await page.keyboard.press('Enter')
+    await (await chooser).setFiles(FIXTURE_IMAGES.cover)
+    await expect(drawer(page)).toHaveCount(0, { timeout: 20000 })
+    await expect(page.getByTestId('note-cover')).toBeVisible()
+    expect(uploads).toHaveLength(1)
+    // "Add cover" is gone: focus lands on "Change cover"
+    await expect(page.getByTestId('change-cover')).toBeFocused()
+  })
+
+  test('drop an image on the dropzone, or paste one: uploaded and set; a dropped text file is refused', async ({ page }) => {
+    const note = await seed.note(`E2E header drop ${RUN}`)
+    const uploads = trackUploads(page)
+    await openNote(page, note)
+    await header(page).hover()
+    await page.getByTestId('add-cover').click()
+
+    await dropFile(page, { buffer: Buffer.from('plain text'), mimeType: 'text/plain', name: 'notes.txt' })
+    await expect(drawer(page).getByRole('alert')).toHaveText('Choose an image file (PNG, JPEG, GIF, WebP or AVIF).')
+    await expect(dropzone(page)).toHaveClass(/dropzone--has-error/)
+    expect(uploads).toHaveLength(0)
+
+    await dropFile(page, png(FIXTURE_IMAGES.cover, 'dropped-cover.png'))
+    await expect(drawer(page)).toHaveCount(0, { timeout: 20000 })
+    await expect(page.locator('[data-testid="note-cover"] img')).toHaveAttribute('src', /dropped-cover/)
+
+    await header(page).hover()
+    await page.getByTestId('add-icon').click()
+    await dropzone(page).focus()
+    await dropzone(page).evaluate((element, base64) => {
+      const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0))
+      const transfer = new DataTransfer()
+      transfer.items.add(new File([bytes], 'pasted-icon.png', { type: 'image/png' }))
+      element.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: transfer }))
+    }, fs.readFileSync(FIXTURE_IMAGES.icon).toString('base64'))
+    await expect(drawer(page)).toHaveCount(0, { timeout: 20000 })
+    await expect(page.locator('[data-testid="note-icon"] img')).toHaveAttribute('src', /pasted-icon/)
+
+    expect(uploads.map((upload) => upload.filename)).toEqual([
+      expect.stringMatching(/^dropped-cover/),
+      expect.stringMatching(/^pasted-icon/),
+    ])
+    const saved = await storedNote(page, note.id)
+    expect((saved.cover as Media).id).toBe(uploads[0].id)
+    expect((saved.icon as Media).id).toBe(uploads[1].id)
+  })
+
+  test('closing the drawer during an upload: the upload finishes; if it fails, the drawer opens again with the error', async ({ page }) => {
+    const note = await seed.note(`E2E header close busy ${RUN}`)
+    trackUploads(page)
+    await openNote(page, note)
+    let release: () => void = () => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await page.route('**/api/media', async (route) => {
+      if (route.request().method() !== 'POST') return route.fallback()
+      await held
+      await route.fulfill({ body: JSON.stringify({ errors: [{ message: 'Upload failed on the server.' }] }), contentType: 'application/json', status: 500 })
+    })
+    await header(page).hover()
+    await page.getByTestId('add-cover').click()
+    await fileInput(page).setInputFiles(FIXTURE_IMAGES.cover)
+    await expect(drawer(page).getByRole('button', { name: 'Uploading…' })).toBeDisabled()
+    // The preview shows at once
+    await expect(page.locator('[data-testid="note-cover"] img')).toHaveAttribute('src', /^blob:/)
+    await page.keyboard.press('Escape')
+    await expect(drawer(page)).toHaveCount(0)
+
+    release()
+    await expect(drawer(page).getByRole('alert')).toHaveText('Upload failed on the server.', { timeout: 20000 })
+    await expect(page.getByTestId('note-cover')).toHaveCount(0)
+    await page.unroute('**/api/media')
+
+    // Closed during an upload that works: the cover is set, the drawer stays closed
+    await fileInput(page).setInputFiles(FIXTURE_IMAGES.cover)
+    await page.keyboard.press('Escape')
+    await expect(page.locator('[data-testid="note-cover"] img')).toHaveAttribute('src', /\/api\/media\/file\//, { timeout: 20000 })
+    await expect(drawer(page)).toHaveCount(0)
+    expect((await storedNote(page, note.id)).cover).toBeTruthy()
   })
 
   test('typing and changing the cover at the same time: both are saved (requests never overlap)', async ({ page }) => {
@@ -234,7 +383,7 @@ test.describe('Edit the note header', () => {
     await header(page).hover()
     await page.getByTestId('add-cover').click()
     await fileInput(page).setInputFiles(FIXTURE_IMAGES.cover)
-    await expect(picker(page)).toHaveCount(0, { timeout: 20000 })
+    await expect(drawer(page)).toHaveCount(0, { timeout: 20000 })
     await expect(page.getByTestId('note-save-status')).toHaveAttribute('data-state', 'saved', { timeout: 20000 })
 
     expect(maxInFlight).toBe(1)
@@ -243,18 +392,34 @@ test.describe('Edit the note header', () => {
     expect(JSON.stringify(saved.note)).toContain(`typed-with-cover-${RUN}`)
   })
 
-  test('phone (touch): the add buttons are visible without hover; the picker fits the screen', async ({ browser }) => {
+  test('phone (touch): the add buttons are visible without hover; the drawer takes the whole screen', async ({ browser }) => {
     const note = await seed.note(`E2E header phone ${RUN}`)
     const context = await browser.newContext({ hasTouch: true, isMobile: true, viewport: { height: 844, width: 390 } })
     const page = await context.newPage()
     await openNote(page, note)
     await expect(page.getByTestId('note-header-add')).toHaveCSS('opacity', '1')
     await page.getByTestId('add-cover').tap()
-    await expect(picker(page)).toBeVisible()
-    const box = (await picker(page).boundingBox())!
-    expect(box.x).toBeGreaterThanOrEqual(0)
-    expect(box.x + box.width).toBeLessThanOrEqual(390)
+    await expect(drawer(page)).toBeVisible()
+    const box = (await page.locator('.note-image-drawer .drawer__content').boundingBox())!
+    expect(box).toEqual({ height: 844, width: 390, x: 0, y: 0 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+    await page.locator('.note-image-drawer .drawer__header__close').tap()
+    await expect(drawer(page)).toHaveCount(0)
     await context.close()
+  })
+
+  test('tablet / desktop: Payload\'s drawer width on the right, the note still visible beside it', async ({ page }) => {
+    const note = await seed.note(`E2E header desktop drawer ${RUN}`)
+    await openNote(page, note)
+    for (const [width, expected] of [[768, 600], [1280, 600], [1920, 768]] as const) {
+      await page.setViewportSize({ height: 900, width })
+      await header(page).hover()
+      await page.getByTestId('add-cover').click()
+      const box = (await page.locator('.note-image-drawer .drawer__content').boundingBox())!
+      expect(Math.round(box.width)).toBe(expected)
+      expect(Math.round(box.x + box.width)).toBe(width)
+      await page.keyboard.press('Escape')
+      await expect(drawer(page)).toHaveCount(0)
+    }
   })
 })

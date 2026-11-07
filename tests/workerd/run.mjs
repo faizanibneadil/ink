@@ -486,9 +486,9 @@ async function userScenario(browser, base, config) {
     // Cover upload from the note page: Media upload to R2 through the Worker, set on the note in D1
     await page.locator('[data-testid="note-header"]').hover()
     await page.locator('[data-testid="add-cover"]').click()
-    await page.locator('[data-testid="note-image-picker"] input[type="file"]').setInputFiles(path.join(ROOT, 'tests/fixtures/cover.png'))
+    await page.locator('[data-testid="note-image-drawer"] input[type="file"]').setInputFiles(path.join(ROOT, 'tests/fixtures/cover.png'))
     const uploaded = await page
-      .waitForSelector('[data-testid="note-image-picker"]', { state: 'detached', timeout: 60000 })
+      .waitForSelector('[data-testid="note-image-drawer"]', { state: 'detached', timeout: 60000 })
       .then(() => true, () => false)
     const src = await page.locator('[data-testid="note-cover"] img').getAttribute('src').catch(() => null)
     const image = src ? await page.request.get(new URL(src, base).toString()) : null

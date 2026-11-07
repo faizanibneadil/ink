@@ -1,13 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useDrawerSlug, useModal } from '@payloadcms/ui'
+import { useEffect, useRef, useState } from 'react'
 
 import type { Media } from '@/payload-types'
 
 import { type NoteHeaderData, type NoteHeaderImage, toHeaderImage } from './header-data'
 import { coverOverflow, dragCoverPosition, stepCoverPosition } from './cover-position'
 import { type HeaderImageField, setCoverPosition, setNoteImage, uploadHeaderImage } from './header-images'
-import { ImagePicker } from './ImagePicker'
+import { ImageDrawer } from './ImageDrawer'
 
 import './note-header.css'
 
@@ -18,8 +19,6 @@ type Props = {
     noteId: number | string
 }
 
-type PickerState = { field: HeaderImageField; trigger: HTMLElement | null }
-
 /** "Reposition" mode of the cover: the position being dragged and the one to go back to on Cancel. */
 type RepositionState = { error: null | string; position: number; saving: boolean; start: number }
 
@@ -27,13 +26,20 @@ const cx = (...classes: (false | null | string | undefined)[]) => classes.filter
 
 /**
  * The note header in the editor: same layout as the read-only header (NoteHeader.tsx), plus Notion's controls.
- * "Add icon" / "Add cover" show on hover (always on touch screens); "Change cover" on the cover; the icon opens the
- * picker. A chosen image shows at once (local preview), is uploaded to Media and set on the note; if anything fails,
- * the previous image comes back and the picker shows why.
+ * "Add icon" / "Add cover" show on hover (always on touch screens); "Change cover" and "Reposition" on the cover; the
+ * icon, "Add …" and "Change cover" open the image drawer (ImageDrawer.tsx, Payload's Drawer). A chosen image shows at
+ * once (local preview), is uploaded to Media and set on the note, and the drawer closes; if anything fails, the
+ * previous image comes back and the drawer shows why.
  */
 export const EditableNoteHeader: React.FC<Props> = ({ getTitle, header: initialHeader, noteId }) => {
     const [header, setHeader] = useState<NoteHeaderData>(initialHeader)
-    const [picker, setPicker] = useState<null | PickerState>(null)
+    const drawerSlug = useDrawerSlug('note-image')
+    const { closeModal, isModalOpen, openModal } = useModal()
+    // Which image the drawer changes; kept after it closes, so the closing drawer does not switch titles
+    const [field, setField] = useState<HeaderImageField>('cover')
+    // Read in async code after `await`, where the render's `isModalOpen` would be stale
+    const drawerOpen = useRef(false)
+    drawerOpen.current = isModalOpen(drawerSlug)
     const [busy, setBusy] = useState<HeaderImageField | null>(null)
     const [error, setError] = useState<null | string>(null)
     const previewUrl = useRef<null | string>(null)
@@ -49,11 +55,42 @@ export const EditableNoteHeader: React.FC<Props> = ({ getTitle, header: initialH
     }
     useEffect(() => revokePreview, [])
 
-    const openPicker = (field: HeaderImageField, trigger: HTMLElement | null) => {
+    const openDrawer = (next: HeaderImageField) => {
         setError(null)
-        setPicker({ field, trigger })
+        setField(next)
+        openModal(drawerSlug)
     }
-    const closePicker = useCallback(() => setPicker(null), [])
+
+    /** The image is set: close the drawer (Payload gives focus back to the button that opened it). */
+    const done = (changed: HeaderImageField) => {
+        focusAfterSet.current = changed
+        closeModal(drawerSlug)
+    }
+
+    // "Add cover" / "Add icon" are gone once the image is set, so Payload cannot give focus back to them: keyboard
+    // users land on the new image's control instead ("Change cover" / the icon), not at the top of the page.
+    const changeCoverRef = useRef<HTMLButtonElement>(null)
+    const iconButtonRef = useRef<HTMLButtonElement>(null)
+    const focusAfterSet = useRef<HeaderImageField | null>(null)
+    const isDrawerOpen = isModalOpen(drawerSlug)
+    useEffect(() => {
+        if (isDrawerOpen || !focusAfterSet.current) return
+        const changed = focusAfterSet.current
+        focusAfterSet.current = null
+        // After Payload's focus trap has given focus back (it runs when the drawer has closed)
+        const timer = window.setTimeout(() => {
+            const active = document.activeElement
+            if (active && active !== document.body && active.isConnected) return
+            ;(changed === 'cover' ? changeCoverRef : iconButtonRef).current?.focus()
+        }, 50)
+        return () => window.clearTimeout(timer)
+    }, [isDrawerOpen])
+
+    /** Failed: show why in the drawer, opening it again if it was closed while the upload ran. */
+    const failed = (message: string) => {
+        setError(message)
+        if (!drawerOpen.current) openModal(drawerSlug)
+    }
 
     const onFile = async (field: HeaderImageField, file: File) => {
         const previous = header[field]
@@ -66,10 +103,10 @@ export const EditableNoteHeader: React.FC<Props> = ({ getTitle, header: initialH
         try {
             const image = await uploadHeaderImage({ field, file, noteId, title: getTitle() })
             setHeader((current) => ({ ...current, [field]: image }))
-            setPicker(null)
+            done(field)
         } catch (failure) {
             setHeader((current) => ({ ...current, [field]: previous }))
-            setError(failure instanceof Error && failure.message ? failure.message : "Couldn't upload this image.")
+            failed(failure instanceof Error && failure.message ? failure.message : "Couldn't upload this image.")
         } finally {
             setBusy(null)
             revokePreview()
@@ -89,10 +126,10 @@ export const EditableNoteHeader: React.FC<Props> = ({ getTitle, header: initialH
         try {
             const image = await setNoteImage(noteId, field, media.id)
             setHeader((current) => ({ ...current, [field]: image }))
-            setPicker(null)
+            done(field)
         } catch (failure) {
             setHeader((current) => ({ ...current, [field]: previous }))
-            setError(failure instanceof Error && failure.message ? failure.message : "Couldn't use this image.")
+            failed(failure instanceof Error && failure.message ? failure.message : "Couldn't use this image.")
         } finally {
             setBusy(null)
         }
@@ -101,7 +138,7 @@ export const EditableNoteHeader: React.FC<Props> = ({ getTitle, header: initialH
     // ---------- Cover reposition ----------
 
     const startReposition = () => {
-        setPicker(null)
+        closeModal(drawerSlug)
         setReposition({ error: null, position: header.coverPosition, saving: false, start: header.coverPosition })
     }
 
@@ -208,18 +245,6 @@ export const EditableNoteHeader: React.FC<Props> = ({ getTitle, header: initialH
 
     const { cover, icon } = header
     const coverPosition = reposition ? reposition.position : header.coverPosition
-    const pickerFor = (field: HeaderImageField) =>
-        picker?.field === field ? (
-            <ImagePicker
-                busy={busy === field}
-                error={error}
-                field={field}
-                onClose={closePicker}
-                onFile={(file) => void onFile(field, file)}
-                onPick={(media) => void onPick(field, media)}
-                trigger={picker.trigger}
-            />
-        ) : null
 
     return (
         <header
@@ -299,8 +324,9 @@ export const EditableNoteHeader: React.FC<Props> = ({ getTitle, header: initialH
                             <button
                                 className="note-header__control"
                                 data-testid="change-cover"
+                                ref={changeCoverRef}
                                 disabled={busy !== null}
-                                onClick={(event) => openPicker('cover', event.currentTarget)}
+                                onClick={() => openDrawer('cover')}
                                 type="button"
                             >
                                 Change cover
@@ -325,8 +351,9 @@ export const EditableNoteHeader: React.FC<Props> = ({ getTitle, header: initialH
                         aria-label="Change icon"
                         className="note-header__icon note-header__icon-button"
                         data-testid="note-icon"
+                        ref={iconButtonRef}
                         disabled={busy !== null}
-                        onClick={(event) => openPicker('icon', event.currentTarget)}
+                        onClick={() => openDrawer('icon')}
                         type="button"
                     >
                         {/* eslint-disable-next-line @next/next/no-img-element -- media is served by Payload (local disk / R2), not next/image */}
@@ -347,7 +374,7 @@ export const EditableNoteHeader: React.FC<Props> = ({ getTitle, header: initialH
                                 className="note-header__control"
                                 data-testid="add-icon"
                                 disabled={busy !== null}
-                                onClick={(event) => openPicker('icon', event.currentTarget)}
+                                onClick={() => openDrawer('icon')}
                                 type="button"
                             >
                                 Add icon
@@ -358,7 +385,7 @@ export const EditableNoteHeader: React.FC<Props> = ({ getTitle, header: initialH
                                 className="note-header__control"
                                 data-testid="add-cover"
                                 disabled={busy !== null}
-                                onClick={(event) => openPicker('cover', event.currentTarget)}
+                                onClick={() => openDrawer('cover')}
                                 type="button"
                             >
                                 Add cover
@@ -366,9 +393,15 @@ export const EditableNoteHeader: React.FC<Props> = ({ getTitle, header: initialH
                         ) : null}
                     </div>
                 ) : null}
-                {pickerFor('icon')}
-                {pickerFor('cover')}
             </div>
+            <ImageDrawer
+                busy={busy === field}
+                error={error}
+                field={field}
+                onFile={(file) => void onFile(field, file)}
+                onPick={(media) => void onPick(field, media)}
+                slug={drawerSlug}
+            />
         </header>
     )
 }

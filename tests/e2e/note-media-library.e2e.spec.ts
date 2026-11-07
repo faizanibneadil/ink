@@ -34,7 +34,8 @@ test.afterAll(async () => {
   await deleteAccount(member.username)
 })
 
-const picker = (page: Page) => page.getByTestId('note-image-picker')
+// "Uploaded images" in the image drawer (src/views/note-header/ImageDrawer.tsx)
+const drawer = (page: Page) => page.getByTestId('note-image-drawer')
 const grid = (page: Page) => page.getByTestId('media-library-grid')
 const item = (page: Page, media: Media) => grid(page).locator(`[data-media-id="${media.id}"]`)
 
@@ -44,13 +45,14 @@ const openLibrary = async (page: Page, note: Note, trigger: 'add-cover' | 'add-i
   await expect(page.locator('.note-page--editor [contenteditable="true"]')).toBeVisible({ timeout: 60000 })
   await page.getByTestId('note-header').hover()
   await page.getByTestId(trigger).click()
-  await picker(page).getByRole('tab', { name: 'Media library' }).click()
+  // The library is right below the dropzone: no tab to switch to
+  await expect(drawer(page).getByRole('heading', { name: 'Uploaded images' })).toBeVisible()
 }
 
 const storedNote = async (page: Page, id: number) =>
   (await (await page.request.get(`${BASE}/api/notes/${id}?depth=0`)).json()) as Note
 
-test.describe('Media library tab', () => {
+test.describe('Uploaded images in the drawer', () => {
   test('pick an image as the cover and another as the icon: no new upload, saved, seen after reload', async ({ page }) => {
     const note = await seed.note(`E2E library pick ${RUN}`)
     let uploads = 0
@@ -64,14 +66,13 @@ test.describe('Media library tab', () => {
     await expect(item(page, newest)).toBeVisible()
     await expect(item(page, newest)).toHaveAccessibleName(`E2E library ${RUN} #${PAGE_SIZE}`)
     await item(page, newest).click()
-    await expect(picker(page)).toHaveCount(0, { timeout: 20000 })
+    await expect(drawer(page)).toHaveCount(0, { timeout: 20000 })
     await expect(page.locator('[data-testid="note-cover"] img')).toHaveAttribute('src', newest.url as string)
 
     await page.getByTestId('note-header').hover()
     await page.getByTestId('add-icon').click()
-    await picker(page).getByRole('tab', { name: 'Media library' }).click()
     await item(page, second).click()
-    await expect(picker(page)).toHaveCount(0, { timeout: 20000 })
+    await expect(drawer(page)).toHaveCount(0, { timeout: 20000 })
 
     expect(uploads).toBe(0)
     const saved = await storedNote(page, note.id)
@@ -99,7 +100,7 @@ test.describe('Media library tab', () => {
     // Newest first: the newest seeded image is on page 1, the oldest one only after "Load more"
     await expect(item(page, images[images.length - 1])).toBeVisible()
     await expect(item(page, images[0])).toHaveCount(0)
-    await picker(page).getByRole('button', { name: 'Load more' }).click()
+    await drawer(page).getByRole('button', { name: 'Load more' }).click()
     await expect(item(page, images[0])).toBeVisible()
     await expect(item(page, svg)).toHaveCount(0)
     await expect(item(page, text)).toHaveCount(0)
@@ -113,7 +114,7 @@ test.describe('Media library tab', () => {
         : route.fallback(),
     )
     await openLibrary(page, note)
-    await expect(page.getByTestId('media-library-empty')).toHaveText('No images yet. Upload one in the Upload tab.')
+    await expect(page.getByTestId('media-library-empty')).toHaveText('No images yet. Upload one above.')
   })
 
   test('loading fails: an error with "Try again", which works once the server is fine', async ({ page }) => {
@@ -140,26 +141,44 @@ test.describe('Media library tab', () => {
         : route.fallback(),
     )
     await item(page, chosen).click()
-    await expect(picker(page).getByRole('alert')).toHaveText('Something went wrong.', { timeout: 20000 })
+    await expect(drawer(page).getByRole('alert')).toHaveText('Something went wrong.', { timeout: 20000 })
     await expect(page.getByTestId('note-cover')).toHaveCount(0)
     // Not deleted: it is an existing file of the library, not one this page uploaded
     expect((await page.request.get(`${BASE}/api/media/${chosen.id}`)).status()).toBe(200)
     expect((await storedNote(page, note.id)).cover ?? null).toBeNull()
   })
 
-  test('keyboard: arrow keys move between the tabs', async ({ page }) => {
+  test('keyboard: pick an image with Tab + Enter; the drawer closes and focus goes back', async ({ page }) => {
     const note = await seed.note(`E2E library keyboard ${RUN}`)
+    const newest = images[images.length - 1]
     await openLibrary(page, note, 'add-icon')
-    const library = picker(page).getByRole('tab', { name: 'Media library' })
-    const upload = picker(page).getByRole('tab', { name: 'Upload' })
-    await expect(library).toHaveAttribute('aria-selected', 'true')
-    await library.focus()
-    await page.keyboard.press('ArrowLeft')
-    await expect(upload).toBeFocused()
-    await expect(upload).toHaveAttribute('aria-selected', 'true')
-    await expect(picker(page).getByRole('button', { name: 'Upload file' })).toBeVisible()
-    await page.keyboard.press('ArrowRight')
-    await expect(library).toBeFocused()
+    await expect(item(page, newest)).toBeVisible()
+    for (let step = 0; step < 8 && !(await item(page, newest).evaluate((element) => element === document.activeElement)); step++) {
+      await page.keyboard.press('Tab')
+    }
+    await expect(item(page, newest)).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(drawer(page)).toHaveCount(0, { timeout: 20000 })
+    await expect(page.locator('[data-testid="note-icon"] img')).toHaveAttribute('src', newest.url as string)
+    await expect(page.getByTestId('note-icon')).toBeFocused()
+  })
+
+  test('an image uploaded in the drawer is first in the list the next time it opens', async ({ page }) => {
+    const note = await seed.note(`E2E library refresh ${RUN}`)
+    page.on('response', async (response) => {
+      if (response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/media' && response.ok()) {
+        seed.adopt('media', ((await response.json()) as { doc: Media }).doc.id)
+      }
+    })
+    await openLibrary(page, note)
     await expect(grid(page)).toBeVisible()
+    const upload = page.waitForResponse((response) => response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/media')
+    await drawer(page).locator('input[type="file"]').setInputFiles(FIXTURE_IMAGES.icon)
+    const uploaded = ((await (await upload).json()) as { doc: Media }).doc
+    await expect(drawer(page)).toHaveCount(0, { timeout: 20000 })
+
+    await page.getByTestId('note-header').hover()
+    await page.getByTestId('add-icon').click()
+    await expect(grid(page).locator('.note-media-library__item').first()).toHaveAttribute('data-media-id', String(uploaded.id))
   })
 })
