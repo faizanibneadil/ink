@@ -499,6 +499,31 @@ async function userScenario(browser, base, config) {
     )
     const coverRow = sql(config, "SELECT cover_id FROM notes WHERE slug = 'hello-world'")
     check('user uploads a cover → notes.cover_id set in D1', Boolean(coverRow[0]?.cover_id), JSON.stringify(coverRow))
+
+    // Notion code block (lazy chunk) instead of Monaco: insert with "/code", type, saved to D1
+    const monaco = []
+    page.on('request', (request) => /monaco/i.test(request.url()) && monaco.push(request.url()))
+    await editor.locator('p').last().click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('/code')
+    await page.locator('.slash-menu-popup__item', { hasText: 'Code Block' }).click()
+    const codeInput = page.locator('[data-testid="notion-code-input"]')
+    const codeReady = await codeInput.waitFor({ timeout: 60000 }).then(() => true, () => false)
+    if (codeReady) await page.keyboard.type('SELECT 42;')
+    const codeSaved = await page
+      .waitForFunction(
+        () => document.querySelector('[data-testid="note-save-status"]')?.getAttribute('data-state') === 'saved',
+        null,
+        { timeout: 30000 },
+      )
+      .then(() => true, () => false)
+    const codeRow = sql(config, "SELECT note FROM notes WHERE slug = 'hello-world'")
+    check(
+      'user inserts a code block → Notion block, saved in D1, no Monaco',
+      codeReady && codeSaved && String(codeRow[0]?.note).includes('SELECT 42;') && monaco.length === 0,
+      `ready ${codeReady}, saved ${codeSaved}, monaco requests ${monaco.length}`,
+    )
   }
   const promote = await api(page, 'PATCH', '/api/users/3', { role: 'admin' })
   const me = await api(page, 'GET', '/api/users/me')
