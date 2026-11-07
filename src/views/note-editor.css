@@ -73,3 +73,206 @@
   display: block;
   width: 100%;
 }
+
+/* ---------- Tables ----------
+ *
+ * Payload's table (cells, header, resizer, hover "+" buttons, cell menu) restyled like Notion, with the guest view's
+ * table tokens (note-viewer.css: `--note-table-*`), so a table looks the same while editing and when read.
+ *
+ * Payload's table theme classes are kept as they are (not extended in src/views/notion-theme.ts): its table plugins
+ * build CSS selectors from them (e.g. `td.${theme.tableCell}`), so extra classes would break them.
+ * Payload's own rules are in `@layer payload-default`, so these unlayered rules win without `!important`.
+ */
+
+.note-page--editor .LexicalEditorTheme__tableScrollableWrapper {
+  position: relative;
+  max-width: 100%;
+  margin: 8px 0;
+  padding-bottom: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--note-border) transparent;
+}
+
+.note-page--editor .LexicalEditorTheme__tableScrollableWrapper::-webkit-scrollbar {
+  height: 8px;
+}
+
+.note-page--editor .LexicalEditorTheme__tableScrollableWrapper::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  background: var(--note-border);
+}
+
+.note-page--editor .LexicalEditorTheme__tableScrollableWrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* As wide as its columns (no `max-width: 100%` squeeze): a wide table scrolls inside its box, like the guest view */
+.note-page--editor .LexicalEditorTheme__table {
+  /* Separate borders, like the guest view (see note-viewer.css) */
+  border-collapse: separate;
+  border-spacing: 0;
+  border-top: 1px solid var(--note-border);
+  border-left: 1px solid var(--note-border);
+  max-width: none;
+  margin-block: 0;
+  overflow: visible;
+  font-size: var(--note-table-font-size);
+  line-height: 1.5;
+}
+
+.note-page--editor .LexicalEditorTheme__tableCell {
+  padding: var(--note-table-cell-padding);
+  border: 0;
+  border-right: 1px solid var(--note-border);
+  border-bottom: 1px solid var(--note-border);
+  overflow-wrap: break-word;
+  cursor: text;
+}
+
+.note-page--editor .LexicalEditorTheme__tableCellHeader {
+  background-color: var(--note-surface);
+  color: var(--note-text-muted);
+  font-weight: 500;
+}
+
+.note-page--editor .LexicalEditorTheme__tableCell > .note-view__p {
+  margin: 0;
+  padding: 0;
+  min-height: 1.5em;
+  /* Payload gives editor paragraphs a fixed line height; cells use the table's (as in the guest view) */
+  line-height: inherit;
+}
+
+.note-page--editor .LexicalEditorTheme__tableCell > :is(.LexicalEditorTheme__ul, .LexicalEditorTheme__ol1) {
+  margin: 0;
+}
+
+/*
+ * Row striping / frozen first column: same colours and rows as the guest view. Payload stripes `tr:nth-child(even)`,
+ * but Lexical puts the <colgroup> next to the rows (no <tbody>), which shifts the count by one; count rows only.
+ */
+.note-page--editor .LexicalEditorTheme__tableRowStriping tr:nth-child(even) {
+  background-color: transparent;
+}
+
+.note-page--editor .LexicalEditorTheme__tableRowStriping tr:nth-of-type(even) > td {
+  background-color: var(--note-hover);
+}
+
+.note-page--editor .LexicalEditorTheme__tableFrozenColumn tr > :first-child {
+  left: var(--note-table-sticky-left, 0px);
+  z-index: 1;
+  background-color: var(--note-bg);
+}
+
+.note-page--editor .LexicalEditorTheme__tableFrozenColumn tr > th:first-child {
+  background-color: var(--note-surface);
+}
+
+.note-page--editor .LexicalEditorTheme__tableFrozenColumn .LexicalEditorTheme__tableRowStriping tr:nth-of-type(even) > td:first-child {
+  background-color: var(--note-hover);
+}
+
+/* Payload draws the frozen column's edge with `::after`; the cell's own border already does (same as the guest view) */
+.note-page--editor .LexicalEditorTheme__tableFrozenColumn tr > :first-child:not(.LexicalEditorTheme__tableCellSelected)::after {
+  content: none;
+}
+
+/* Hover "+" bars under the last row / after the last column (Notion: quiet until hovered) */
+.note-page--editor :is(.LexicalEditorTheme__tableAddRows, .LexicalEditorTheme__tableAddColumns) {
+  border-radius: 4px;
+  background-color: transparent;
+  background-size: 14px 14px;
+  opacity: 0.55;
+  transition:
+    background-color 120ms ease,
+    opacity 120ms ease;
+}
+
+.note-page--editor :is(.LexicalEditorTheme__tableAddRows, .LexicalEditorTheme__tableAddColumns):is(:hover, :focus-visible) {
+  background-color: var(--note-hover);
+  opacity: 1;
+}
+
+.note-page--editor :is(.LexicalEditorTheme__tableAddRows, .LexicalEditorTheme__tableAddColumns):focus-visible {
+  outline: 2px solid var(--color-border-selected);
+  outline-offset: 1px;
+}
+
+/* Cell menu button (the "…" in the focused cell) */
+.note-page--editor .table-cell-action-button {
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--note-text-muted);
+  background: var(--note-bg);
+  box-shadow: 0 0 0 1px var(--note-border);
+}
+
+.note-page--editor .table-cell-action-button svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+.note-page--editor .table-cell-action-button:hover {
+  background: var(--note-hover);
+}
+
+/*
+ * The cell menu is rendered at the end of <body>, outside `.note-page--editor`; `:has()` limits these rules to the note
+ * page (the admin keeps Payload's menu).
+ */
+body:has(.note-page--editor) .table-action-menu-dropdown {
+  min-width: 220px;
+  padding: 6px;
+  border-radius: 8px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  box-shadow:
+    0 0 0 1px var(--color-border),
+    0 3px 6px rgb(15 15 15 / 0.1),
+    0 9px 24px rgb(15 15 15 / 0.2);
+}
+
+body:has(.note-page--editor) .table-action-menu-dropdown hr {
+  margin: 6px -6px;
+  background-color: var(--color-border);
+}
+
+body:has(.note-page--editor) .table-action-menu-dropdown .item {
+  min-height: 28px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--color-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+body:has(.note-page--editor) .table-action-menu-dropdown .item:is(:hover, :focus-visible) {
+  background: var(--color-bg-hover);
+  color: var(--color-text);
+}
+
+body:has(.note-page--editor) .table-action-menu-dropdown .item[data-test-id='table-delete'],
+body:has(.note-page--editor) .table-action-menu-dropdown .item[data-test-id^='table-delete-'] {
+  color: var(--color-text-danger);
+}
+
+/* Phones: tables use the full screen width (same as the guest view) */
+@media (max-width: 600px) {
+  .note-page--editor .LexicalEditorTheme__tableScrollableWrapper {
+    --note-table-sticky-left: calc(-1 * var(--note-gutter));
+
+    max-width: none;
+    margin-inline: calc(-1 * var(--note-gutter));
+    padding-inline: var(--note-gutter);
+    scroll-padding-inline: var(--note-gutter);
+  }
+}

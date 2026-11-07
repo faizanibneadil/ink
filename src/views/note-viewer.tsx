@@ -17,6 +17,7 @@ import { excalidrawConverters, type ExcalidrawViewerNodeTypes } from '@/features
 import { NOTION_VIEW, views } from './config'
 import type { NoteHeaderData } from './note-header/header-data'
 import { NoteHeader } from './note-header/NoteHeader'
+import { tableColumnWidths } from './table-columns'
 
 // Notion-style read-only styles. Only styles elements inside `.note-page` / `.note-view`.
 import './note-viewer.css'
@@ -125,15 +126,28 @@ const editorThemeConverters: JSXConverters<DefaultNodeTypes> = {
         )
     },
     table: ({ node, nodesToJSX }) => {
-        // `colWidths` is saved by the table feature but missing from the default node types
-        const colWidths = (node as { colWidths?: number[] }).colWidths
+        // Saved by Lexical's table node but missing from Payload's serialized node type
+        const { frozenColumnCount, rowStriping } = node as { frozenColumnCount?: number; rowStriping?: boolean }
+        // The widths the editor shows (./table-columns.ts)
+        const widths = tableColumnWidths(node as Parameters<typeof tableColumnWidths>[0])
+        const className = [
+            'note-view__table',
+            rowStriping && 'note-view__table--striped',
+            frozenColumnCount && frozenColumnCount > 0 && 'note-view__table--frozen-column',
+            // Lexical aligns a table only to the center or the right (like the editor's `tableAlignment` theme)
+            (node.format === 'center' || node.format === 'right') && `note-view__table--${node.format}`,
+        ]
+            .filter(Boolean)
+            .join(' ')
         return (
             <div className="note-view__table-scroll">
-                <table className="note-view__table">
-                    {/* Column widths set in the editor, like Lexical's own <colgroup> */}
-                    {colWidths?.length ? (
+                <table className={className}>
+                    {/* Column widths, like Lexical's own <colgroup> in the editor */}
+                    {widths.length ? (
                         <colgroup>
-                            {colWidths.map((width, index) => <col key={index} style={{ width }} />)}
+                            {widths.map((width, index) => (
+                                <col key={index} style={width ? { width } : undefined} />
+                            ))}
                         </colgroup>
                     ) : null}
                     <tbody>{nodesToJSX({ nodes: node.children })}</tbody>

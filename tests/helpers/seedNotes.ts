@@ -57,6 +57,64 @@ export const noteWithCodeBlock = (
   return content as unknown as Note['note']
 }
 
+/** Options of the table made by `noteWithTable` (Lexical's serialized table node). */
+export type SeedTable = {
+  colWidths?: number[]
+  frozenColumnCount?: number
+  /** Rows of cell texts; the first row is a header row */
+  rows: string[][]
+  rowStriping?: boolean
+}
+
+const textNode = (text: string) => ({ type: 'text', detail: 0, format: 0, mode: 'normal', style: '', text, version: 1 })
+const paragraphNode = (text: string) => ({
+  type: 'paragraph',
+  children: text ? [textNode(text)] : [],
+  direction: null,
+  format: '',
+  indent: 0,
+  textFormat: 0,
+  textStyle: '',
+  version: 1,
+})
+
+/** Note content: a heading, a paragraph, then a table, then a paragraph. */
+export const noteWithTable = (title: string, table: SeedTable): Note['note'] => {
+  const { rows, ...options } = table
+  const content = noteContent(title, 'Before the table') as unknown as { root: { children: unknown[] } }
+  content.root.children.push(
+    {
+      type: 'table',
+      children: rows.map((cells, rowIndex) => ({
+        type: 'tablerow',
+        children: cells.map((text) => ({
+          type: 'tablecell',
+          backgroundColor: null,
+          children: [paragraphNode(text)],
+          colSpan: 1,
+          direction: null,
+          format: '',
+          headerState: rowIndex === 0 ? 1 : 0,
+          indent: 0,
+          rowSpan: 1,
+          version: 1,
+        })),
+        direction: null,
+        format: '',
+        indent: 0,
+        version: 1,
+      })),
+      direction: null,
+      format: '',
+      indent: 0,
+      version: 1,
+      ...options,
+    },
+    paragraphNode('After the table'),
+  )
+  return content as unknown as Note['note']
+}
+
 /**
  * Creates notes / media through the local API for one test file and deletes everything it made in `cleanup()`.
  * Same database as the dev server Playwright starts (DATABASE_URL).

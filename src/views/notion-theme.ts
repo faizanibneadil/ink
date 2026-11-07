@@ -5,7 +5,9 @@ import type { EditorThemeClasses } from '@payloadcms/richtext-lexical/lexical'
  * `notion` view (./config.tsx), so the editor on `/<slug>` uses the same typography as the guest view.
  *
  * Only plain text elements: lists, checklists and tables keep Payload's classes alone, because their editing UI
- * (checkbox click target, cell resizers / action buttons) depends on Payload's own styles.
+ * (checkbox click target, cell resizers / action buttons) depends on Payload's own styles. Payload's table plugins
+ * even build CSS selectors from the theme's table classes (e.g. `td.${theme.tableCell}`), so an extra class there
+ * would break the hover "+" buttons. Tables get the read-only look from scoped CSS instead (note-editor.css).
  */
 const NOTE_VIEW_CLASSES = {
     root: 'note-view',

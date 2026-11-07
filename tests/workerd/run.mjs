@@ -524,6 +524,47 @@ async function userScenario(browser, base, config) {
       codeReady && codeSaved && String(codeRow[0]?.note).includes('SELECT 42;') && monaco.length === 0,
       `ready ${codeReady}, saved ${codeSaved}, monaco requests ${monaco.length}`,
     )
+
+    // Notion table: insert with "/table" (3 × 2 from the grid), type in a cell, saved to D1, same columns for guests
+    await editor.locator('p').last().click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('/table')
+    await page.locator('.slash-menu-popup__item-table').click()
+    await page.getByRole('button', { name: '3 columns, 2 rows' }).click()
+    const table = page.locator('.note-page--editor table')
+    const tableReady = await table.waitFor({ timeout: 30000 }).then(() => true, () => false)
+    if (tableReady) await page.keyboard.type('Cell from the Worker')
+    const tableSaved = await page
+      .waitForFunction(
+        () => document.querySelector('[data-testid="note-save-status"]')?.getAttribute('data-state') === 'saved',
+        null,
+        { timeout: 30000 },
+      )
+      .then(() => true, () => false)
+    const tableRow = String(sql(config, "SELECT note FROM notes WHERE slug = 'hello-world'")[0]?.note ?? '')
+    const columns = (locator) =>
+      locator.evaluate((element) => [...element.querySelector('tr').children].map((cell) => Math.round(cell.getBoundingClientRect().width)))
+    const editorColumns = tableReady ? await columns(table) : []
+    const guestContext = await browser.newContext({ viewport: { height: 900, width: 1280 } })
+    const guestPage = await guestContext.newPage()
+    await guestPage.goto(`${base}/hello-world`)
+    const guestTable = guestPage.locator('.note-view__table')
+    const guestReady = await guestTable.waitFor({ timeout: 30000 }).then(() => true, () => false)
+    const guestColumns = guestReady ? await columns(guestTable) : []
+    const guestText = guestReady ? await guestTable.innerText() : ''
+    await guestContext.close()
+    check(
+      'user inserts a table → saved in D1, guest sees it with the editor’s columns',
+      tableReady &&
+        tableSaved &&
+        tableRow.includes('"tablecell"') &&
+        tableRow.includes('Cell from the Worker') &&
+        guestText.includes('Cell from the Worker') &&
+        editorColumns.length === 3 &&
+        JSON.stringify(editorColumns) === JSON.stringify(guestColumns),
+      `ready ${tableReady}, saved ${tableSaved}, editor ${JSON.stringify(editorColumns)}, guest ${JSON.stringify(guestColumns)}`,
+    )
   }
   const promote = await api(page, 'PATCH', '/api/users/3', { role: 'admin' })
   const me = await api(page, 'GET', '/api/users/me')

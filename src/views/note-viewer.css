@@ -16,6 +16,10 @@
   --note-surface: var(--color-bg-secondary);
   --note-hover: var(--color-bg-hover);
   --note-inline-code: var(--color-text-danger);
+  --note-bg: var(--color-bg);
+  /* Tables: shared by the guest view (below) and the editor (note-editor.css), so both look the same */
+  --note-table-font-size: 14px;
+  --note-table-cell-padding: 7px 9px;
 
   box-sizing: border-box;
   width: 100%;
@@ -273,7 +277,12 @@
   text-decoration-color: var(--note-text-faint);
 }
 
-/* ---------- Tables (Notion style, scroll horizontally inside their own box) ---------- */
+/* ---------- Tables (Notion style, scroll horizontally inside their own box) ----------
+ *
+ * The editor (note-editor.css) styles Payload's table with the same tokens, and the columns have the widths the editor
+ * shows (src/views/table-columns.ts), so a table looks the same for guests and while editing. Like Notion, a table is
+ * exactly as wide as its columns (fixed layout) and scrolls sideways when wider than the page.
+ */
 
 .note-view__table-scroll {
   position: relative;
@@ -301,23 +310,37 @@
   background: transparent;
 }
 
+/*
+ * Separate borders: each cell draws its right and bottom line, the table its top and left edge. A frozen (sticky)
+ * cell then keeps its own lines while the table scrolls under it (collapsed borders are painted by the table and
+ * would disappear behind it), and merged cells need nothing special.
+ */
 .note-view__table {
-  width: max-content;
-  min-width: 100%;
+  width: fit-content;
   margin: 0;
-  border-collapse: collapse;
+  border-collapse: separate;
   border-spacing: 0;
-  table-layout: auto;
-  font-size: 14px;
+  border-top: 1px solid var(--note-border);
+  border-left: 1px solid var(--note-border);
+  table-layout: fixed;
+  font-size: var(--note-table-font-size);
   line-height: 1.5;
+}
+
+.note-view__table--center {
+  margin-inline: auto;
+}
+
+.note-view__table--right {
+  margin-inline-start: auto;
 }
 
 .note-view__th,
 .note-view__td {
-  min-width: 120px;
-  max-width: 400px;
-  padding: 7px 9px;
-  border: 1px solid var(--note-border);
+  padding: var(--note-table-cell-padding);
+  border: 0;
+  border-right: 1px solid var(--note-border);
+  border-bottom: 1px solid var(--note-border);
   vertical-align: top;
   text-align: start;
   overflow-wrap: break-word;
@@ -330,10 +353,21 @@
   font-weight: 500;
 }
 
-/* Column widths set in the editor (<colgroup>) win over the default min/max widths */
-.note-view__table:has(colgroup) .note-view__th,
-.note-view__table:has(colgroup) .note-view__td {
-  max-width: none;
+/* "Toggle row striping" in the editor's table menu */
+.note-view__table--striped tr:nth-of-type(even) > .note-view__td {
+  background-color: var(--note-hover);
+}
+
+/* "Toggle first column freeze": the first column stays in place while the table scrolls sideways */
+.note-view__table--frozen-column tr > :first-child {
+  position: sticky;
+  left: var(--note-table-sticky-left, 0px);
+  z-index: 1;
+  background-color: var(--note-bg);
+}
+
+.note-view__table--frozen-column tr > .note-view__th:first-child {
+  background-color: var(--note-surface);
 }
 
 .note-view__th > .note-view__p,
@@ -370,6 +404,8 @@
   }
 
   .note-view__table-scroll {
+    --note-table-sticky-left: calc(-1 * var(--note-gutter));
+
     max-width: none;
     padding-inline: var(--note-gutter);
     scroll-padding-inline: var(--note-gutter);
