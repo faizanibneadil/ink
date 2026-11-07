@@ -47,6 +47,16 @@ export const noteContent = (title: string, text = 'Body text of the note.'): Not
     },
   }) as Note['note']
 
+/** Note content: a heading, then a code block, then a paragraph. */
+export const noteWithCodeBlock = (
+  title: string,
+  block: { code: string; filename?: string; language: string },
+): Note['note'] => {
+  const content = noteContent(title, 'After the code') as unknown as { root: { children: unknown[] } }
+  content.root.children.splice(1, 0, { type: 'code-block', version: 1, filename: '', ...block })
+  return content as unknown as Note['note']
+}
+
 /**
  * Creates notes / media through the local API for one test file and deletes everything it made in `cleanup()`.
  * Same database as the dev server Playwright starts (DATABASE_URL).
@@ -91,6 +101,16 @@ export const createNoteSeeder = () => {
         overrideAccess: true,
       })
       media.push(doc.id)
+      return doc
+    },
+    /** A note with exactly this content (e.g. from `noteWithCodeBlock`). */
+    async noteWithContent(note: Note['note']): Promise<Note> {
+      const doc = await (await getClient()).create({
+        collection: 'notes',
+        data: { note } as RequiredDataFromCollectionSlug<'notes'>,
+        overrideAccess: true,
+      })
+      notes.push(doc.id)
       return doc
     },
     async note(

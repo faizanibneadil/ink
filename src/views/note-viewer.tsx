@@ -14,7 +14,7 @@ import { RichText } from '@payloadcms/richtext-lexical/react'
 import { codeBlockConverters, type CodeBlockViewerNodeTypes } from '@/features/code-block/viewer/converter'
 import { excalidrawConverters, type ExcalidrawViewerNodeTypes } from '@/features/excalidraw/viewer/converter'
 
-import { views } from './config'
+import { NOTION_VIEW, views } from './config'
 import type { NoteHeaderData } from './note-header/header-data'
 import { NoteHeader } from './note-header/NoteHeader'
 
@@ -177,7 +177,8 @@ export const NoteViewer: React.FC<{ header: NoteHeaderData, note: Note['note'] }
                     className="note-view"
                     converters={converters}
                     data={note as DefaultTypedEditorState}
-                    nodeMap={views.default.nodes}
+                    // Same node map as the note page editor (notion view): the code block renders the same way
+                    nodeMap={views[NOTION_VIEW].nodes}
                 />
             </div>
         </article>

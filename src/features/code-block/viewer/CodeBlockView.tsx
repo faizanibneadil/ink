@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 
+import { copyText } from '../shared/copyText'
 import { codeLanguages } from '../shared/languages'
 import { highlightLines } from './highlight'
 
@@ -10,31 +11,14 @@ import './code-block-viewer.css'
 
 const cx = (...classes: (0 | false | null | string | undefined)[]) => classes.filter(Boolean).join(' ')
 
-const copyText = async (text: string) => {
-    if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text)
-        return
-    }
-    // Fallback for browsers / insecure contexts without the async clipboard API
-    const textarea = document.createElement('textarea')
-    textarea.value = text
-    textarea.setAttribute('readonly', '')
-    textarea.style.position = 'fixed'
-    textarea.style.opacity = '0'
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    textarea.remove()
-}
-
-const CopyIcon = () => (
+export const CopyIcon = () => (
     <svg aria-hidden="true" fill="none" height="14" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" viewBox="0 0 24 24" width="14">
         <rect height="13" rx="2" width="13" x="9" y="9" />
         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
     </svg>
 )
 
-const CheckIcon = () => (
+export const CheckIcon = () => (
     <svg aria-hidden="true" fill="none" height="14" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="14">
         <path d="M20 6 9 17l-5-5" />
     </svg>

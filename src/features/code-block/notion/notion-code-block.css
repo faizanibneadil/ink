@@ -1,0 +1,140 @@
+/*
+ * Code block of the note page editor (NotionCodeBlock.tsx). Built on the read-only block's look
+ * (code-block-viewer.css: `.note-view__codeblock`, colours, highlight.js theme), so editing and reading look alike.
+ *
+ * The code is a transparent <textarea> exactly on top of the highlighted <pre>: both use the same font, size, line
+ * height, padding and wrapping, so the caret and selection sit on the coloured text. Long lines wrap (no sideways
+ * scrolling while typing, also on phones).
+ */
+
+.notion-code-block {
+  --notion-code-font: var(--font-family-mono, var(--text-mono-family)), ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+  --notion-code-padding: 6px 16px 18px;
+}
+
+.notion-code-block__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 4px 6px 0 10px;
+}
+
+.notion-code-block__language,
+.notion-code-block__filename {
+  height: 24px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--note-text-faint);
+  font: inherit;
+  font-size: 12px;
+}
+
+.notion-code-block__language {
+  max-width: 40%;
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+.notion-code-block__filename {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 6px;
+}
+
+.notion-code-block__language:hover,
+.notion-code-block__filename:hover,
+.notion-code-block__filename:focus {
+  background: var(--note-hover);
+  color: var(--note-text-muted);
+}
+
+.notion-code-block__language:focus-visible,
+.notion-code-block__filename:focus-visible {
+  outline: 2px solid var(--color-border-selected, currentColor);
+  outline-offset: 1px;
+}
+
+.notion-code-block__actions {
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+
+/* The read-only block's Copy button sits in an absolutely placed header; here the header is a row */
+.notion-code-block .notion-code-block__action {
+  pointer-events: auto;
+}
+
+.notion-code-block__body {
+  position: relative;
+}
+
+.notion-code-block__highlight,
+.notion-code-block__input {
+  box-sizing: border-box;
+  margin: 0;
+  padding: var(--notion-code-padding);
+  border: 0;
+  font-family: var(--notion-code-font);
+  font-size: 85%;
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: normal;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  tab-size: 2;
+  text-align: left;
+  text-transform: none;
+}
+
+.notion-code-block__highlight {
+  min-height: calc(1.6em + 24px);
+  color: var(--note-code-text);
+  pointer-events: none;
+}
+
+.notion-code-block__highlight code {
+  font: inherit;
+  white-space: inherit;
+}
+
+.notion-code-block__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  resize: none;
+  outline: none;
+  background: transparent;
+  /* The text shows through from the highlighted <pre>; only the caret and selection come from the textarea */
+  color: transparent;
+  caret-color: var(--note-code-text);
+  -webkit-text-fill-color: transparent;
+}
+
+.notion-code-block__input::placeholder {
+  color: var(--note-text-faint);
+  -webkit-text-fill-color: var(--note-text-faint);
+}
+
+.notion-code-block__input::selection {
+  background: rgb(35 131 226 / 0.28);
+}
+
+.notion-code-block:focus-within {
+  box-shadow: 0 0 0 1px var(--note-border);
+}
+
+.notion-code-block__visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

@@ -64,3 +64,12 @@
   white-space: nowrap;
   border: 0;
 }
+
+/*
+ * Payload gives every Lexical decorator `width: fit-content`. The code block (Notion style, src/features/code-block/
+ * notion) takes the full text column, like in the read-only view.
+ */
+.note-page--editor .ink-code-block-node {
+  display: block;
+  width: 100%;
+}

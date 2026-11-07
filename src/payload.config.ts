@@ -104,6 +104,11 @@ export default buildConfig({
     })
     : sqliteAdapter({
       blocksAsJSON: true,
+      // Local SQLite only (not D1). The dev server and other processes on the same file (Payload CLI, the
+      // tests' local API) can write at the same time: wait up to 5s for a lock instead of failing at once with
+      // SQLITE_BUSY, and use WAL so readers are not blocked by a writer.
+      busyTimeout: 5000,
+      wal: true,
       migrationDir: path.resolve(dirname, 'migrations'),
       transactionOptions: {
         behavior: "deferred"

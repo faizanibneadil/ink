@@ -6,6 +6,8 @@ import type {
 import type { SerializedCodeBlockNode } from '@/features/code-block'
 import type { SerializedExcalidrawNode } from '@/features/excalidraw'
 
+import { notionCodeBlockNode } from '@/features/code-block/notion/view'
+
 import { addNoteViewClasses } from './notion-theme'
 
 type NodeTypes =
@@ -22,7 +24,8 @@ export const NOTION_VIEW = 'notion'
  * - `default`: the Payload admin editor, unchanged (fixed toolbar, Monaco code block).
  * - `notion`:  the editor on the note page (src/views/editor.tsx forces it with `RichTextViewProvider`).
  *              Notion-like: no fixed toolbar (slash menu, inline toolbar and drag handle stay), the read-only
- *              view's typography, Notion's placeholder.
+ *              view's typography, Notion's placeholder, and the Notion-style code block instead of Monaco (the guest
+ *              view renders the same node map, src/views/note-viewer.tsx).
  *
  * The admin would show a "Default / Notion" view selector above the field; it is hidden there (src/app/custom.css).
  */
@@ -42,6 +45,8 @@ export const views: LexicalEditorViewMap<NodeTypes> = {
             ...defaultConfig,
             theme: addNoteViewClasses(defaultConfig.theme),
         }),
-        nodes: {},
+        nodes: {
+            'code-block': notionCodeBlockNode,
+        },
     },
 }
