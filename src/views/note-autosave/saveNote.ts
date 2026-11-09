@@ -31,13 +31,17 @@ export const messageFor = async (response: Response): Promise<string> => {
 /**
  * Saves the note's content through Payload's REST API (`PATCH /api/notes/:id`, logged-in cookie).
  * Only `note` is sent: the slug (the page URL), cover and icon are not touched.
+ *
+ * `json`: the note already serialized with `JSON.stringify` (the autosaver does it once per save). The body is built
+ * around it, so a large note is not serialized a second time.
  */
 export const saveNoteContent = async (
     id: number | string,
     note: unknown,
-    { keepalive = false }: { keepalive?: boolean } = {},
+    { json, keepalive = false }: { json?: string; keepalive?: boolean } = {},
 ): Promise<void> => {
-    const body = JSON.stringify({ note })
+    // `JSON.stringify(undefined)` is not a string: then build the body from `note` (gives `{}`, as before)
+    const body = typeof json === 'string' ? `{"note":${json}}` : JSON.stringify({ note })
     // Queued with the cover / icon updates of the same note (../note-requests.ts)
     return runNoteRequest(id, async () => {
         let response: Response

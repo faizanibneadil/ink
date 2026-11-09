@@ -40,8 +40,8 @@ export const useNoteAutosave = <T>(
         const autosaver = new Autosaver<T>({
             initialValue: savedRef.current,
             onChange: setSnapshot,
-            save: async (value, { keepalive }) => {
-                await saveNoteContent(id, value, { keepalive })
+            save: async (value, { json, keepalive }) => {
+                await saveNoteContent(id, value, { json, keepalive })
                 savedRef.current = value
             },
         })

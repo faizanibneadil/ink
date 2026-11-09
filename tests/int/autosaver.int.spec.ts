@@ -268,14 +268,45 @@ describe('saveNoteContent', () => {
     expect(init.keepalive).toBe(false)
   })
 
+  it('builds the body around the already-serialized note instead of serializing it again', async () => {
+    const fetchMock = vi.fn(async () => new Response('{}', { status: 200 }))
+    globalThis.fetch = fetchMock as unknown as typeof fetch
+    const note = { root: { children: [{ text: 'a "quoted" \\ text' }] } }
+    const stringify = vi.spyOn(JSON, 'stringify')
+    await saveNoteContent(7, note, { json: '{"root":{"children":[{"text":"a \\"quoted\\" \\\\ text"}]}}' })
+    expect(stringify).not.toHaveBeenCalled()
+    stringify.mockRestore()
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(init.body).toBe('{"note":{"root":{"children":[{"text":"a \\"quoted\\" \\\\ text"}]}}}')
+    expect(JSON.parse(init.body as string)).toEqual({ note })
+  })
+
+  it('without `json` (or with no value at all) it serializes the note itself', async () => {
+    const fetchMock = vi.fn(async () => new Response('{}', { status: 200 }))
+    globalThis.fetch = fetchMock as unknown as typeof fetch
+    await saveNoteContent(7, null, { json: 'null' })
+    await saveNoteContent(7, undefined, { json: JSON.stringify(undefined) })
+    await saveNoteContent(7, { a: 1 })
+    const bodies = (fetchMock.mock.calls as unknown as [string, RequestInit][]).map(([, init]) => init.body)
+    expect(bodies).toEqual(['{"note":null}', '{}', '{"note":{"a":1}}'])
+  })
+
   it('keepalive only when the body fits the browser limit', async () => {
     const fetchMock = vi.fn(async () => new Response('{}', { status: 200 }))
     globalThis.fetch = fetchMock as unknown as typeof fetch
     await saveNoteContent(1, { text: 'small' }, { keepalive: true })
     await saveNoteContent(1, { text: 'x'.repeat(70 * 1024) }, { keepalive: true })
+    // Same check when the body is built from pre-serialized JSON (on the whole body, wrapper included)
+    const big = JSON.stringify({ text: 'x'.repeat(60 * 1024 - 15) })
+    await saveNoteContent(1, null, { json: big, keepalive: true })
+    await saveNoteContent(1, null, { json: JSON.stringify({ text: 'small' }), keepalive: true })
     const calls = fetchMock.mock.calls as unknown as [string, RequestInit][]
     expect(calls[0][1].keepalive).toBe(true)
     expect(calls[1][1].keepalive).toBe(false)
+    expect(big.length).toBeLessThan(60 * 1024)
+    expect((calls[2][1].body as string).length).toBeGreaterThanOrEqual(60 * 1024)
+    expect(calls[2][1].keepalive).toBe(false)
+    expect(calls[3][1].keepalive).toBe(true)
   })
 
   it('turns failures into readable messages', async () => {
