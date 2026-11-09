@@ -37,7 +37,6 @@ const NoteEditor: React.FC<{ id: number | string, note?: Note['note'], onTitle: 
     const [initialValue] = useState<DefaultTypedEditorState>(() => {
         return (note as DefaultTypedEditorState | null | undefined) ?? buildEditorState<DefaultNodeTypes>({ text: '' })
     })
-    const [value, setValue] = useState<DefaultTypedEditorState | undefined>(initialValue)
     const containerRef = useRef<HTMLDivElement>(null)
     // The editor's state right now (not the one Payload hands over in idle time): saved when the page is left
     const readLatest = useCallback(() => {
@@ -53,9 +52,10 @@ const NoteEditor: React.FC<{ id: number | string, note?: Note['note'], onTitle: 
     )
 
     const { onChange: autosaveChange } = autosave
+    // The editor owns its state: changes are not mirrored into React state (that re-rendered the whole Payload field
+    // tree on every change, for nothing: Lexical reads `value` only at mount)
     const onValue = useCallback(
         (next: DefaultTypedEditorState | undefined) => {
-            setValue(next)
             autosaveChange(next)
             onTitle(getNoteFirstLine(next))
         },
@@ -73,7 +73,8 @@ const NoteEditor: React.FC<{ id: number | string, note?: Note['note'], onTitle: 
                     schemaPath="collection.notes.note"
                     // Payload types `setValue` as a form-field setter (`(value: unknown) => void`)
                     setValue={onValue as SetValue}
-                    value={value}
+                    // Always the same reference: Payload's field never sees a new value, so it never re-mounts the editor
+                    value={initialValue}
                 />
             </RichTextViewProvider>
         </div>
