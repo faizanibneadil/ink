@@ -261,7 +261,8 @@ describe('saveNoteContent', () => {
     await saveNoteContent(7, { root: { children: [] } })
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
-    expect(url).toBe('/api/notes/7?depth=0')
+    // `select`: the response carries only id + updatedAt, not the whole note
+    expect(url).toBe('/api/notes/7?depth=0&select[updatedAt]=true')
     expect(init.method).toBe('PATCH')
     expect(init.credentials).toBe('include')
     expect(JSON.parse(init.body as string)).toEqual({ note: { root: { children: [] } } })

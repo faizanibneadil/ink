@@ -31,6 +31,7 @@ export const messageFor = async (response: Response): Promise<string> => {
 /**
  * Saves the note's content through Payload's REST API (`PATCH /api/notes/:id`, logged-in cookie).
  * Only `note` is sent: the slug (the page URL), cover and icon are not touched.
+ * The response carries only `id` + `updatedAt` (`select`): the saved note is not sent back, the page never reads it.
  *
  * `json`: the note already serialized with `JSON.stringify` (the autosaver does it once per save). The body is built
  * around it, so a large note is not serialized a second time.
@@ -46,7 +47,7 @@ export const saveNoteContent = async (
     return runNoteRequest(id, async () => {
         let response: Response
         try {
-            response = await fetch(`/api/notes/${encodeURIComponent(String(id))}?depth=0`, {
+            response = await fetch(`/api/notes/${encodeURIComponent(String(id))}?depth=0&select[updatedAt]=true`, {
                 body,
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
