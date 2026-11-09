@@ -3,15 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { type AutosaveSnapshot, Autosaver } from '@/views/note-autosave/autosaver'
 import { NoteSaveError, saveNoteContent } from '@/views/note-autosave/saveNote'
 
-type Call = { keepalive: boolean; resolve: () => void; reject: (error: Error) => void; value: string }
+type Call = { json: string; keepalive: boolean; resolve: () => void; reject: (error: Error) => void; value: string }
 
 /** A save function whose requests the test finishes by hand. */
 const controlledSave = () => {
   const calls: Call[] = []
   const save = vi.fn(
-    (value: string, { keepalive }: { keepalive: boolean }) =>
+    (value: string, { json, keepalive }: { json: string; keepalive: boolean }) =>
       new Promise<void>((resolve, reject) => {
-        calls.push({ keepalive, reject, resolve, value })
+        calls.push({ json, keepalive, reject, resolve, value })
       }),
   )
   return { calls, save }
@@ -20,14 +20,17 @@ const controlledSave = () => {
 const setup = (initialValue = 'v0') => {
   const { calls, save } = controlledSave()
   const states: AutosaveSnapshot[] = []
+  // Counts serializations (the costly part on a large note)
+  const serialize = vi.fn((value: string) => JSON.stringify(value))
   const autosaver = new Autosaver<string>({
     delay: 1000,
     initialValue,
     maxWait: 5000,
     onChange: (snapshot) => states.push(snapshot),
     save,
+    serialize,
   })
-  return { autosaver, calls, save, states }
+  return { autosaver, calls, save, serialize, states }
 }
 
 /** Lets resolved save promises run their `then` code. */
@@ -179,13 +182,57 @@ describe('Autosaver', () => {
     expect(save).not.toHaveBeenCalled()
   })
 
-  it('typing a letter and deleting it again is not a change', async () => {
+  it('typing a letter and deleting it again sends no save', async () => {
     const { autosaver, save } = setup('text')
     autosaver.update('text!')
     autosaver.update('text')
-    expect(autosaver.hasUnsavedChanges()).toBe(false)
+    // Not compared yet (that happens when the save runs), so it may count as unsaved until then
     await vi.advanceTimersByTimeAsync(5000)
     expect(save).not.toHaveBeenCalled()
+    expect(autosaver.state.status).toBe('saved')
+    expect(autosaver.hasUnsavedChanges()).toBe(false)
+  })
+
+  it('serializes only when a save runs, once, and hands the string to the saver', async () => {
+    const { autosaver, calls, serialize } = setup()
+    // the constructor serializes the value the page was opened with, once
+    expect(serialize).toHaveBeenCalledTimes(1)
+    for (let i = 1; i <= 20; i++) autosaver.update(`v${i}`)
+    expect(serialize).toHaveBeenCalledTimes(1)
+    expect(autosaver.hasUnsavedChanges()).toBe(true)
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(serialize).toHaveBeenCalledTimes(2)
+    expect(serialize).toHaveBeenLastCalledWith('v20')
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatchObject({ json: '"v20"', value: 'v20' })
+    calls[0].resolve()
+    await settle()
+    expect(serialize).toHaveBeenCalledTimes(2)
+  })
+
+  it('a failed save is retried with the latest value, serialized again', async () => {
+    const { autosaver, calls } = setup()
+    autosaver.update('a')
+    await vi.advanceTimersByTimeAsync(1000)
+    calls[0].reject(new Error('offline'))
+    await settle()
+    expect(autosaver.hasUnsavedChanges()).toBe(true)
+    autosaver.retry()
+    expect(calls).toHaveLength(2)
+    expect(calls[1]).toMatchObject({ json: '"a"', value: 'a' })
+  })
+
+  it('going back to the opened value while a save runs still saves it after that save', async () => {
+    const { autosaver, calls } = setup('v0')
+    autosaver.update('a')
+    await vi.advanceTimersByTimeAsync(1000)
+    autosaver.update('v0')
+    calls[0].resolve()
+    await settle()
+    await vi.advanceTimersByTimeAsync(1000)
+    // The server now has 'a', so 'v0' is a real change again
+    expect(calls).toHaveLength(2)
+    expect(calls[1].value).toBe('v0')
   })
 
   it('after dispose() no new save starts, but a started save still finishes', async () => {
