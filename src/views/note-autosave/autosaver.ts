@@ -5,6 +5,8 @@
  * - One request at a time: a change made while a save is running is saved right after it, so an older save can never
  *   overwrite a newer one on the server.
  * - Nothing is sent when the value is the same as the last saved one (or as the value the page was opened with).
+ * - Cheap per change: `update()` only keeps the value and marks it dirty. The value is serialized once, when a save
+ *   runs, and the saver gets that string (`json`) so it does not have to serialize it again.
  * - A failed save keeps the changes as unsaved: `retry()` (or the next change) tries again.
  * - `flush()` saves now (page hidden / closed), using `keepalive` so the browser can finish it after the page is gone.
  */
@@ -17,7 +19,14 @@ export type AutosaveSnapshot = {
     status: AutosaveStatus
 }
 
-export type SaveFunction<T> = (value: T, options: { keepalive: boolean }) => Promise<void>
+export type SaveFunction<T> = (
+    value: T,
+    options: {
+        /** `value` already serialized (with `serialize`): send this instead of serializing it again */
+        json: string
+        keepalive: boolean
+    },
+) => Promise<void>
 
 export type AutosaverOptions<T> = {
     /** Wait this long after the last change before saving (ms) */
@@ -39,12 +48,13 @@ const errorMessage = (error: unknown): string =>
 
 export class Autosaver<T> {
     private delay: number
+    /** `latest` changed since it was last serialized for a save (not known to be saved) */
+    private dirty = false
     private disposed = false
     private firstChangeAt: null | number = null
     private flushRequested = false
     private inFlight = false
     private latest: T
-    private latestKey: string
     private maxWait: number
     private onChangeListener?: (snapshot: AutosaveSnapshot) => void
     private save: SaveFunction<T>
@@ -60,8 +70,7 @@ export class Autosaver<T> {
         this.serialize = options.serialize ?? ((value) => JSON.stringify(value))
         this.onChangeListener = options.onChange
         this.latest = options.initialValue
-        this.latestKey = this.serialize(options.initialValue)
-        this.savedKey = this.latestKey
+        this.savedKey = this.serialize(options.initialValue)
     }
 
     get state(): AutosaveSnapshot {
@@ -70,23 +79,14 @@ export class Autosaver<T> {
 
     /** Changes not saved yet (or being saved): leaving the page now could lose them. */
     hasUnsavedChanges(): boolean {
-        return this.inFlight || this.latestKey !== this.savedKey
+        return this.inFlight || this.dirty
     }
 
-    /** New editor value. */
+    /** New editor value. Cheap: no serialization here (it runs once, when the save runs). */
     update(value: T): void {
         if (this.disposed) return
         this.latest = value
-        this.latestKey = this.serialize(value)
-        if (this.latestKey === this.savedKey && !this.inFlight) {
-            // Back to what is saved (e.g. typed and deleted a letter): nothing to do
-            this.clearTimer()
-            this.firstChangeAt = null
-            if (this.snapshot.status === 'pending' || this.snapshot.status === 'error') {
-                this.setSnapshot({ error: null, status: 'saved' })
-            }
-            return
-        }
+        this.dirty = true
         this.schedule()
     }
 
@@ -137,28 +137,38 @@ export class Autosaver<T> {
         // A save is already running: this change is saved when it is done
         if (this.inFlight) return
         this.firstChangeAt = null
-        if (this.latestKey === this.savedKey) {
+        if (!this.dirty) {
             if (this.snapshot.status !== 'idle') this.setSnapshot({ error: null, status: 'saved' })
             return
         }
 
-        const key = this.latestKey
+        // The only serialization of this value
         const value = this.latest
+        const json = this.serialize(value)
+        this.dirty = false
+        if (json === this.savedKey) {
+            // Back to what is saved (e.g. typed and deleted a letter): nothing to send
+            this.setSnapshot({ error: null, status: 'saved' })
+            return
+        }
+
         this.inFlight = true
         this.setSnapshot({ error: null, status: 'saving' })
         try {
-            await this.save(value, { keepalive })
+            await this.save(value, { json, keepalive })
         } catch (error) {
             this.inFlight = false
             this.flushRequested = false
+            // Not saved: still to be saved (retry() or the next change)
+            this.dirty = true
             if (!this.disposed) this.setSnapshot({ error: errorMessage(error), status: 'error' })
             return
         }
         this.inFlight = false
-        this.savedKey = key
+        this.savedKey = json
         if (this.disposed) return
 
-        if (this.latestKey !== this.savedKey) {
+        if (this.dirty) {
             // Changed while saving: save the newer value next
             if (this.flushRequested) {
                 this.flushRequested = false

@@ -2,6 +2,20 @@
 
 For any Payload-related work, reference the skill at `node_modules/payload/skills/payload/SKILL.md`.
 
+## Note editor performance rules
+
+Notes can be large (long lectures). Work done on every editor change must cost the size of the edit, not the size of
+the note.
+
+- Never mirror the Lexical editor value into React state. The editor owns its state; pass `RenderLexical` a stable
+  `value` (the initial value) and only read changes in `setValue` (`src/views/editor.tsx`).
+- Do not serialize the whole document on every change. Detect changes cheaply (a dirty flag) and serialize once, at
+  save time; pass that string on instead of stringifying it again (`src/views/note-autosave/autosaver.ts`,
+  `saveNote.ts`).
+- Do not download what the page does not read: save requests use `select` so the response is not the whole note.
+- For any editor performance change, profile a large note (hundreds of KB) before and after, with the same note and
+  method, and report the numbers.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 ## This is NOT the Next.js you know
