@@ -1,0 +1,96 @@
+# Browser JS bundle audit (baseline)
+
+Method: `.agents/skills/next-bundle-optimizer` (audit mode). Scope: whole app. Next.js 16.4.5 (Turbopack), Payload 4.0.0-beta.7.
+
+## Evidence
+
+| Kind | Source |
+|------|--------|
+| Build evidence | `next analyze --output --snapshot 'audit-before-1'` → `next analyze export` (graph v1), commit `410e0e0` |
+| Runtime evidence | `tests/e2e/bundle-size.e2e.spec.ts` against `pnpm build && pnpm start` (Chromium, cache off, until network idle) |
+
+### Runtime baseline (JS downloaded on first load)
+
+| Page | JS files | Raw | Over the wire (compressed) |
+|------|---------:|----:|----------------------------:|
+| Landing `/` (guest) — renders one `<div>` | 17 | 2751 KiB | **873 KiB** |
+| Guest note page `/<slug>` | 17 | 2751 KiB | **873 KiB** |
+| Editor note page `/<slug>` (logged in) | 20 | 2802 KiB | 893 KiB |
+| Admin dashboard `/` | 17 | 2751 KiB | 873 KiB |
+
+### Build baseline (route `/[[...segments]]`, attributed compressed bytes of `[client-fs]` outputs)
+
+- The whole app is **one page route** (`src/app/[[...segments]]/page.tsx`): admin, dashboard, editor, guest note and landing.
+- Bootstrap group: 5 files, 162 KiB. Render-dependent groups (one per client reference): **the same 13 files, 780 KiB, for
+  every client reference** — `src/app/layout.tsx` alone pulls 762 KiB. So every page downloads the admin's client code.
+- Async-only (loaded on demand, not on first load): Excalidraw 1437 KiB, mermaid ~800 KiB, katex 75 KiB… — already lazy.
+
+Top packages in bootstrap + render-dependent (first load):
+
+| KiB | Package | Needed by |
+|----:|---------|-----------|
+| 391 | `@payloadcms/ui` | admin + editor (guest pages only because of the shared root layout) |
+| 177 | `next` | everyone |
+| 74 | `highlight.js` (40 grammars) | code blocks (guest view + editor) |
+| 72 + 61 + ~70 | `@payloadcms/richtext-lexical`, `lexical`, `@lexical/*` | editor (guest view only needs serialized JSON → HTML) |
+| 13 | `@dnd-kit/core` | admin / editor drag handle |
+
+## Candidates (ranked)
+
+### C1 — Website pages (landing, guest note) inside Payload's `RootLayout` → **biggest win**
+- **Scope:** route `/[[...segments]]`, client output, snapshot `audit-before-1`, metric: wire KiB per page (runtime) +
+  render-dependent attributed bytes (build).
+- **Source:** `src/app/layout.tsx` renders `@payloadcms/next/layouts#RootLayout` (client providers import the
+  `@payloadcms/ui` client barrel) for every URL. `page.tsx` imports `Editor` and `NoteViewer` into the same route, so
+  Turbopack puts all client references of the route into the same chunk set.
+- **Reachability:** all render-dependent groups share the same 13 outputs; no async boundary separates them.
+- **Proposed edit:** guests (no Payload auth cookie) get the website pages from a separate route group with its own
+  light root layout (no Payload providers). Logged-in users and Payload pages keep today's layout. Same URLs.
+- **Behavior checks:** guest note page renders header, text, tables, code (highlighted, Copy), drawings; login and
+  admin/editor unchanged; switching between them is a full page load (different root layouts).
+- **Risk:** auth-based routing (cookie check only decides the layout; access control stays in Payload queries).
+
+### C2 — `NoteViewer` is a client component
+- `src/views/note-viewer.tsx` (`'use client'`) ships Lexical `RichText`, converters, `views` config and highlight.js
+  to guests, though the output is static HTML. Proposed: Server Component; client islands only for the Copy button and
+  the Excalidraw preview. Measurable only after C1 (until then all client code shares chunks).
+
+### C3 — `@payloadcms/ui` in the guest drawing viewer
+- `src/features/excalidraw/viewer/ExcalidrawViewer.tsx` imports `useTheme` from `@payloadcms/ui` (391 KiB barrel). On the
+  separate website layout that provider is absent. Proposed: read the theme from `data-theme`/`prefers-color-scheme`.
+
+### C4 — highlight.js grammars in the editor
+- `src/features/code-block/notion/view.tsx` → `CodeBlockView` → `viewer/highlight.ts` registers 40 grammars
+  (74 KiB) synchronously for every editor/admin page. Proposed: load highlight.js lazily (async chunk) in the editor;
+  the server-rendered guest view (C2) keeps synchronous highlighting.
+
+### C5 — Excalidraw (verified, no change)
+- Already behind `next/dynamic` in `ExcalidrawPreview.tsx` and `ExcalidrawModal.tsx`; `shared/scene.ts` has type-only
+  imports from `@excalidraw/excalidraw`. Graph: Excalidraw is async-only. Rejected as a candidate.
+
+### Community / min-cut pass
+Skipped as a separate solver pass: the graph has a single route whose render-dependent groups all resolve to the same
+chunk set, so direct importer reasoning (layout → Payload providers; page → Editor/NoteViewer) accounts for every path.
+
+## Client-dependency scan
+
+| Source + client importer | Emitted identity | Routes | Compressed B | Disposition + evidence |
+|---|---|---|---:|---|
+| `src/features/code-block/server/CodeBlockServerNode.ts` ← `client/CodeBlockNode.tsx` | `[app-client]` | `/[[...segments]]` | 580 | suppressed: Lexical node class shared by design (client node extends it), no secrets |
+| `src/features/excalidraw/server/ExcalidrawServerNode.ts` ← `client/ExcalidrawNode.tsx` | `[app-client]` | `/[[...segments]]` | 404 | suppressed: same as above |
+| `src/collections/note-text.ts` ← `views/editor.tsx` | `[app-client]` | `/[[...segments]]` | 206 | suppressed: file header says "also used in the browser", pure text helper |
+| `src/collections/media-rules.ts` ← `views/note-header/header-images.ts` | `[app-client]` | `/[[...segments]]` | 64 | suppressed: public upload rules shared on purpose |
+| `src/collections/note-header.ts` ← `views/note-header/header-data.ts` | `[app-client]` | `/[[...segments]]` | 8 | suppressed: cover-position constants |
+| `payload/dist/collections/config/defaults.js` ← `@payloadcms/ui` | `[app-client]` | `/[[...segments]]` | 16 | suppressed: Payload's own client defaults |
+| Server Action `serverFunction` (`src/app/layout.tsx`, `'use server'`) ← Payload `RootLayout` | generated action reference | `/[[...segments]]` | (next router action code ~3 KiB) | suppressed: reference-only stub; `handleServerFunctions`/config not in client output |
+
+### Possible server-only leaks
+None found.
+
+### Suppressed matches / evidence gaps
+Suppressed: rows above. Evidence gaps: none — every `[client-fs]` JS chunk of this route has `exact` coverage (219); the 2 `not_a_chunk` JS
+outputs are runtime/polyfill files; no unsupported outputs.
+
+## Task order (updated by this evidence)
+C1 dominates (every page pays for the admin). C2–C4 only change guest/editor numbers once pages stop sharing one chunk
+set, so C1 goes first; then C3 + C2 (guest view), then C4 (editor).
