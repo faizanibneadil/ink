@@ -1,5 +1,3 @@
-'use client'
-
 import type {
     DefaultNodeTypes,
     DefaultTypedEditorState,
@@ -14,7 +12,6 @@ import { RichText } from '@payloadcms/richtext-lexical/react'
 import { codeBlockConverters, type CodeBlockViewerNodeTypes } from '@/features/code-block/viewer/converter'
 import { excalidrawConverters, type ExcalidrawViewerNodeTypes } from '@/features/excalidraw/viewer/converter'
 
-import { NOTION_VIEW, views } from './config'
 import type { NoteHeaderData } from './note-header/header-data'
 import { NoteHeader } from './note-header/NoteHeader'
 import { tableColumnWidths } from './table-columns'
@@ -22,8 +19,10 @@ import { tableColumnWidths } from './table-columns'
 // Notion-style read-only styles. Only styles elements inside `.note-page` / `.note-view`.
 import './note-viewer.css'
 
-// `views` comes from a 'use client' module, so it can only be read on the client.
-// Reading it in the server component (note.tsx) gives an RSC client reference where `views.default` is undefined.
+// A Server Component: the read-only note is plain HTML, so its converters, Lexical's JSX renderer and highlight.js run
+// on the server only. Client islands: the code block's Copy button and the drawings (ExcalidrawViewer).
+// No `nodeMap` from ./config.tsx (a 'use client' module, unreadable here): its only entry, the notion view's
+// `code-block`, renders the same CodeBlockView as `codeBlockConverters` in a read-only tree.
 
 // Lexical text format bit flags
 const IS_BOLD = 1
@@ -191,8 +190,6 @@ export const NoteViewer: React.FC<{ header: NoteHeaderData, note: Note['note'] }
                     className="note-view"
                     converters={converters}
                     data={note as DefaultTypedEditorState}
-                    // Same node map as the note page editor (notion view): the code block renders the same way
-                    nodeMap={views[NOTION_VIEW].nodes}
                 />
             </div>
         </article>

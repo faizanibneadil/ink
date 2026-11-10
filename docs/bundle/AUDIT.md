@@ -126,3 +126,27 @@ Behavior checks:
   90/90 on workerd (OpenNext: Node.js proxy support is marked experimental there; verified locally and on preview).
 - Known flaky, also on `main`: `admin.e2e` "list views" (Payload adds `?limit=10`), SQLITE_BUSY on login when the test
   process and the server share the local SQLite file.
+
+### T3 — C2: guest note view is a Server Component (accepted)
+
+`src/views/note-viewer.tsx`, both read-only converters and `CodeBlockView` no longer are client modules: Payload's
+`RichText` (a plain function), the converters and highlight.js run on the server. Client islands: `CopyButton`
+(`src/features/code-block/viewer/CopyButton.tsx`) and `ExcalidrawViewer` (drawings, still loaded on scroll). The
+`nodeMap` from `src/views/config.tsx` is dropped there: its only entry renders the same `CodeBlockView` read-only.
+
+| Page | After T2 (wire / raw) | After T3 (wire / raw) |
+|------|----------------------:|----------------------:|
+| Landing `/` (guest) | 206 / 670 KiB | **144 / 465 KiB** |
+| Guest note page | 206 / 670 KiB | **144 / 465 KiB** |
+| Editor note page | 893 / 2803 KiB | 889 / 2790 KiB |
+| Admin dashboard | 873 / 2751 KiB | 869 / 2739 KiB |
+
+Build evidence (snapshot `audit-after-T3`), route `/site/[[...segments]]` first load: bootstrap 162 KiB +
+render-dependent 15 KiB. App code ~6 KiB; `highlight.js` and Lexical are gone from the guest's browser. What is
+left is the Next.js runtime.
+
+Behavior checks: the same guest note (cover, icon, table, two code blocks, a drawing) on the T2 build and this build:
+identical DOM except the server's port, screenshots pixel-identical below the cover (the T2 worktree had no
+`media/` folder, so its cover images did not load). New e2e: guest drawing renders as an SVG. Full e2e 92/92 (with
+the admin list-view test fixed: Payload may add `?limit=10` to list URLs, also on `main`), int 95/95,
+workerd 90/90.

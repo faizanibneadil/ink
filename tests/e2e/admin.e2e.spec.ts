@@ -60,12 +60,13 @@ test.describe('Admin Panel', () => {
   })
 
   test('can navigate to list views (users, notes)', async () => {
+    // Payload may add the list's saved preferences to the URL (e.g. `?limit=10`)
     await page.goto(`${BASE}/collections/users`)
-    await expect(page).toHaveURL(`${BASE}/collections/users`)
+    await expect(page).toHaveURL(new RegExp(`^${BASE}/collections/users(\\?.*)?$`))
     await expect(page.locator('h1', { hasText: 'Users' }).first()).toBeVisible()
 
     await page.goto(`${BASE}/collections/notes`)
-    await expect(page).toHaveURL(`${BASE}/collections/notes`)
+    await expect(page).toHaveURL(new RegExp(`^${BASE}/collections/notes(\\?.*)?$`))
     await expect(page.locator('h1', { hasText: 'Notes' }).first()).toBeVisible()
   })
 

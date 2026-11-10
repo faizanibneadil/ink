@@ -14,6 +14,21 @@ const RUN = Date.now().toString(36)
 const seed = createNoteSeeder()
 const member: TestAccount = { password: 'e2e-pass-1234', role: 'user', username: `e2e-site-${RUN}` }
 let note: Note
+let drawingNote: Note
+
+/** A drawing with one rectangle (Excalidraw element format, as the editor saves it). */
+const DRAWING = JSON.stringify({
+  appState: {},
+  elements: [
+    {
+      angle: 0, backgroundColor: 'transparent', boundElements: null, fillStyle: 'solid', frameId: null, groupIds: [],
+      height: 80, id: 'rect-1', isDeleted: false, link: null, locked: false, opacity: 100, roughness: 1,
+      roundness: null, seed: 1, strokeColor: '#1e1e1e', strokeStyle: 'solid', strokeWidth: 2, type: 'rectangle',
+      updated: 1, version: 1, versionNonce: 1, width: 160, x: 0, y: 0,
+    },
+  ],
+  files: {},
+})
 
 test.describe.configure({ mode: 'serial' })
 
@@ -22,11 +37,28 @@ test.beforeAll(async () => {
   note = await seed.noteWithContent(
     noteWithCodeBlock(`E2E site routing ${RUN}`, { code: 'const answer = 42', filename: 'answer.ts', language: 'ts' }),
   )
+  const content = noteWithCodeBlock(`E2E site drawing ${RUN}`, { code: 'x', language: 'plaintext' }) as unknown as {
+    root: { children: unknown[] }
+  }
+  content.root.children.push({ type: 'excalidraw', data: DRAWING, version: 1 })
+  drawingNote = await seed.noteWithContent(content as unknown as Note['note'])
 })
 
+/** Retries a local-API write while the server still holds the SQLite file's lock (e.g. right after the editor test). */
+const whenUnlocked = async (write: () => Promise<unknown>) => {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await write()
+    } catch (error) {
+      if (attempt >= 10 || !String(error).includes('SQLITE_BUSY')) throw error
+      await new Promise((resolve) => setTimeout(resolve, 500))
+    }
+  }
+}
+
 test.afterAll(async () => {
-  await seed.cleanup()
-  await deleteAccount(member.username)
+  await whenUnlocked(() => seed.cleanup())
+  await whenUnlocked(() => deleteAccount(member.username))
 })
 
 const watchProblems = (page: Page) => {
@@ -57,6 +89,16 @@ test('guest note page: website layout, same URL, highlighted code and Copy', asy
   await page.getByRole('button', { name: 'Copy code' }).click()
   await expect(page.getByRole('button', { name: 'Copied' })).toBeVisible()
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('const answer = 42')
+  expect(problems).toEqual([])
+})
+
+test('guest drawing: rendered as an SVG when it scrolls into view', async ({ page }) => {
+  const problems = watchProblems(page)
+  await page.goto(`${BASE}/${drawingNote.slug}`)
+  const preview = page.locator('.ink-excalidraw--readonly .ink-excalidraw-preview--rendered svg')
+  await expect(preview).toBeVisible({ timeout: 30000 })
+  await expect(preview.locator('path, rect').first()).toBeAttached()
+  await expect(payloadLayout(page)).toHaveCount(0)
   expect(problems).toEqual([])
 })
 

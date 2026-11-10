@@ -1,5 +1,3 @@
-'use client'
-
 import type { JSXConverters } from '@payloadcms/richtext-lexical/react'
 
 import type { SerializedExcalidrawNode } from '../server/ExcalidrawServerNode'

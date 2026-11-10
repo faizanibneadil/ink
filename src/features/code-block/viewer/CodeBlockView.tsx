@@ -1,54 +1,26 @@
-'use client'
-
-import { useEffect, useMemo, useRef, useState } from 'react'
-
-import { copyText } from '../shared/copyText'
 import { codeLanguages } from '../shared/languages'
+import { CopyButton } from './CopyButton'
 import { highlightLines } from './highlight'
 
 // Notion-style read-only code block styles (line numbers, Copy button, highlight.js colours)
 import './code-block-viewer.css'
 
-const cx = (...classes: (0 | false | null | string | undefined)[]) => classes.filter(Boolean).join(' ')
-
-export const CopyIcon = () => (
-    <svg aria-hidden="true" fill="none" height="14" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" viewBox="0 0 24 24" width="14">
-        <rect height="13" rx="2" width="13" x="9" y="9" />
-        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-    </svg>
-)
-
-export const CheckIcon = () => (
-    <svg aria-hidden="true" fill="none" height="14" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="14">
-        <path d="M20 6 9 17l-5-5" />
-    </svg>
-)
-
-/** Read-only code block: line numbers + syntax highlighting (highlight.js), Copy button, no editor. */
+/**
+ * Read-only code block: line numbers + syntax highlighting (highlight.js), Copy button, no editor.
+ *
+ * No hooks and no 'use client': in the guest note view (a Server Component, src/views/note-viewer.tsx) it renders on
+ * the server, so highlight.js and its grammars stay out of the browser; only CopyButton is a client component.
+ * The note page editor (a client tree) imports it too, as the code block's loading fallback.
+ */
 export const CodeBlockView: React.FC<{ code: string, filename?: null | string, language?: null | string }> = ({
     code,
     filename,
     language,
 }) => {
-    const [copied, setCopied] = useState(false)
-    const timeout = useRef<ReturnType<typeof setTimeout>>(undefined)
-    const lines = useMemo(() => highlightLines(code, language), [code, language])
+    const lines = highlightLines(code, language)
     const languageLabel = language ? codeLanguages[language as keyof typeof codeLanguages] ?? language : ''
     // File name first when set: "app.tsx · TypeScript"
     const label = [filename?.trim(), languageLabel].filter(Boolean).join(' · ')
-
-    useEffect(() => () => clearTimeout(timeout.current), [])
-
-    const onCopy = async () => {
-        try {
-            await copyText(code)
-            setCopied(true)
-            clearTimeout(timeout.current)
-            timeout.current = setTimeout(() => setCopied(false), 2000)
-        } catch {
-            // Clipboard blocked: leave the button as it is
-        }
-    }
 
     return (
         <div className="note-view__codeblock">
@@ -56,15 +28,7 @@ export const CodeBlockView: React.FC<{ code: string, filename?: null | string, l
                 <span className="note-view__codeblock-lang">
                     {label}
                 </span>
-                <button
-                    aria-label={copied ? 'Copied' : 'Copy code'}
-                    className={cx('note-view__codeblock-copy', copied && 'note-view__codeblock-copy--copied')}
-                    onClick={onCopy}
-                    type="button"
-                >
-                    {copied ? <CheckIcon /> : <CopyIcon />}
-                    <span>{copied ? 'Copied' : 'Copy'}</span>
-                </button>
+                <CopyButton code={code} />
             </div>
             {/* One element per line: CSS adds the line numbers (not selectable, not copied) */}
             <pre
