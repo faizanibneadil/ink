@@ -180,3 +180,20 @@ The uncoloured fallback shows for a few ms (colours 4 ms after the editor is vis
 checks it has the same lines and text as the highlighted block, so nothing moves when colours arrive.
 Tests: e2e 93/93 incl. a new "editor without a code block downloads no highlight.js" check, int 103/103,
 workerd 90/90.
+
+### T5 — remaining candidates (audit only, no edit)
+
+Snapshot `audit-after-T4`, route `/[[...segments]]` (Payload admin + editor), first load (bootstrap +
+render-dependent): `@payloadcms/ui` 391, `next` 176, `@payloadcms/richtext-lexical` 67, `lexical` 60, `@lexical/*`
+~65, `@dnd-kit/core` 12, app code 23 KiB.
+
+| Candidate | Evidence | Disposition |
+|-----------|----------|-------------|
+| `@payloadcms/ui` client (391 KiB) | 330 KiB is one pre-bundled file (`dist/exports/client/index.js`) that Payload's own `RootLayout` (`RootProviders`) imports; Turbopack cannot tree-shake it | rejected: needs a Payload change |
+| Lexical on the admin dashboard | Payload's layout group alone carries 128 KiB of Lexical (`src/app/importMap.js` → richtext feature clients); moving the note editor to its own route would not remove it | rejected: no gain without Payload changes |
+| Lazy `ImageDrawer` + `MediaLibrary` + `header-images` (editor) | 2.6 KiB together (0.3% of the editor's 828 KiB); would add a load step when opening the cover/icon drawer | rejected: below noise, visible timing cost |
+| Duplicate packages (19: `roughjs`, `d3-*`, `@radix-ui/*`, `layout-base`…) | all inside `@excalidraw/excalidraw` / `mermaid` trees, async-only (opening a drawing), largest pair ~15 KiB | rejected: not first load; overriding transitive versions risks Excalidraw / mermaid |
+| `next` runtime (176 KiB) | framework bootstrap | out of scope |
+
+No further accepted edits. Guest pages are at the Next.js runtime floor; admin/editor are bound by Payload's
+client bundle.
