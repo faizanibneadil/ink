@@ -1,8 +1,66 @@
-# Browser JS bundle audit (baseline)
+# Browser JS bundle audit
 
-Method: `.agents/skills/next-bundle-optimizer` (audit mode). Scope: whole app. Next.js 16.4.5 (Turbopack), Payload 4.0.0-beta.7.
+Method: `.agents/skills/next-bundle-optimizer`. Scope: whole app. Next.js 16.4.5 (Turbopack), Payload 4.0.0-beta.7.
+Branch `perf-with-next-bundle-optimizer`, from `main` at `410e0e0`.
 
-## Evidence
+## Summary
+
+JavaScript downloaded on first load (compressed over the wire; raw in brackets), production build:
+
+| Page | Before | After | Change |
+|------|-------:|------:|-------:|
+| Landing `/` (guest) | 873 KiB (2751) | **144 KiB** (465) | −84% |
+| Note page `/<slug>` (guest) | 873 KiB (2751) | **144 KiB** (465) | −84% |
+| Note editor, note without a code block | 893 KiB | **828 KiB** (2595) | −7% |
+| Note editor, note with a code block | 893 KiB (2802) | 889 KiB (2791) | highlight.js on demand |
+| Admin dashboard | 873 KiB (2751) | **812 KiB** (2551) | −7% |
+
+Accepted changes (each verified with an analyzer snapshot, the page-size e2e, behavior tests and the workerd suite):
+
+| Task | Change | Main files |
+|------|--------|------------|
+| T2 | Guests get `/` and `/<slug>` from a light root layout (`src/app/(site)`), rewritten by `src/proxy.ts`; Payload pages and logged-in users keep `src/app/(payload)` | `src/proxy.ts`, `src/utilities/siteRoute.ts`, `src/app/(site)/**` |
+| T3 | The guest note view renders on the server; client islands: Copy button, drawings | `src/views/note-viewer.tsx`, `src/features/code-block/viewer/**` |
+| T4 | highlight.js loads with the editable code block only | `src/features/code-block/notion/view.tsx`, `viewer/CodeBlockFrame.tsx` |
+
+What users notice: nothing, by design. Guest pages are pixel-identical (light, dark-system, dark-cookie) and keep
+the same URLs. Differences: a guest 404 now answers HTTP 404 (was 200 with the same page); `site` is a reserved note
+slug; in the editor a code block shows uncoloured for a few ms while its chunk loads. The guest theme stays Payload's
+(cookie, else light).
+
+Risk to watch: `src/proxy.ts` is a Node.js proxy; OpenNext marks Node.js middleware on Cloudflare as experimental. It
+passes `pnpm test:workerd` (90/90, local workerd) and deploys as a Workers Preview (CI); the pages on the Preview
+are checked by hand. If it ever breaks, deleting `src/proxy.ts` makes every
+page fall back to the Payload route, which still renders the guest view (bigger bundle, same output).
+
+Left as is (T5 below): Payload's pre-bundled UI client (391 KiB) and the Lexical clients in Payload's import map,
+which only a Payload change can reduce; the Next.js runtime; async-only duplicates inside Excalidraw / mermaid.
+Client-dependency scan re-run on `audit-after-T4`: same five intentional shared modules as the baseline;
+`src/proxy.ts`, `src/utilities/siteRoute.ts` and `src/views/note-data.ts` are not in client output. No leaks.
+
+### Reproduce
+
+```bash
+pnpm build && pnpm start
+```
+
+```bash
+BUNDLE_E2E=1 pnpm exec playwright test tests/e2e/bundle-size.e2e.spec.ts
+```
+
+```bash
+pnpm exec next analyze --output --snapshot 'my-snapshot'
+```
+
+```bash
+pnpm exec next analyze export --snapshot 'my-snapshot' | gzip > /tmp/analyze.jsonl.gz
+```
+
+`tests/e2e/bundle-size.e2e.spec.ts` holds per-page budgets: lower them after a change that makes a page lighter.
+
+## Baseline
+
+### Evidence
 
 | Kind | Source |
 |------|--------|
