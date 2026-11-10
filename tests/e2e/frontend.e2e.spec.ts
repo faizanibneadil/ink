@@ -3,11 +3,11 @@ import { expect, test } from '@playwright/test'
 import { deleteAccount, loginAs, seedAccount, type TestAccount } from '../helpers/loginAs'
 
 /*
- * The website's home page (`/`, src/app/[[...segments]]/page.tsx): the landing page for guests and members. Admins get
- * the Payload dashboard there instead (see admin.e2e.spec.ts).
+ * The website's home page (`/`): the landing page for guests (src/app/(site), see site-routing.e2e.spec.ts) and members
+ * (src/app/(payload)/[[...segments]]/page.tsx). Admins get the Payload dashboard there instead (see admin.e2e.spec.ts).
  *
- * The site runs inside Payload's RootLayout on purpose: the note pages use Payload's font and colour tokens (light /
- * dark theme), so Payload's fonts and styles being present on `/` is expected and not tested against.
+ * Both layouts load Payload's font and colour tokens (light / dark theme) on purpose: the note pages use them, so
+ * Payload's fonts and styles being present on `/` is expected and not tested against.
  */
 
 const BASE = 'http://localhost:3000'

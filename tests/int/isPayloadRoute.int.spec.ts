@@ -111,11 +111,11 @@ describe('getPayloadRouteKind', () => {
 })
 
 describe('getReservedSlugs', () => {
-  it('contains every Payload first segment plus api/_next', () => {
+  it('contains every Payload first segment plus api/_next/site', () => {
     const reserved = getReservedSlugs(config)
     for (const slug of [
       'account', 'collections', 'create-first-user', 'forgot', 'globals', 'login', 'logout',
-      'logout-inactivity', 'reset', 'unauthorized', 'api', '_next',
+      'logout-inactivity', 'reset', 'unauthorized', 'api', '_next', 'site',
     ]) {
       expect(reserved.has(slug), slug).toBe(true)
     }

@@ -94,3 +94,35 @@ outputs are runtime/polyfill files; no unsupported outputs.
 ## Task order (updated by this evidence)
 C1 dominates (every page pays for the admin). C2–C4 only change guest/editor numbers once pages stop sharing one chunk
 set, so C1 goes first; then C3 + C2 (guest view), then C4 (editor).
+
+## Results
+
+### T2 — C1 + C3: guest website on its own root layout (accepted)
+
+Guests without the Payload auth cookie are rewritten (same URL) by `src/proxy.ts` to `src/app/(site)` — a root layout
+with Payload's CSS and fonts but no Payload client providers. Payload pages and logged-in users keep
+`src/app/(payload)` (Payload's `RootLayout`, unchanged). `ExcalidrawViewer` reads the theme from `<html data-theme>`
+(`src/views/useDocumentTheme.ts`) instead of `@payloadcms/ui`'s `useTheme`.
+
+| Page | Before (wire / raw) | After (wire / raw) |
+|------|--------------------:|-------------------:|
+| Landing `/` (guest) | 873 / 2751 KiB | **206 / 670 KiB** (−76%) |
+| Guest note page | 873 / 2751 KiB | **206 / 670 KiB** (−76%) |
+| Editor note page | 893 / 2802 KiB | 893 / 2803 KiB (unchanged) |
+| Admin dashboard | 873 / 2751 KiB | 873 / 2751 KiB (unchanged) |
+
+Build evidence (snapshot `audit-after-T2`): route `/site/[[...segments]]` first load = bootstrap 162 KiB +
+render-dependent 99 KiB; `@payloadcms/ui` 0 KiB (was 391). Remaining guest weight: `next` 170 KiB, `highlight.js`
+74 KiB (C2/C4 next). Route `/[[...segments]]`: unchanged (+1 KiB).
+
+Behavior checks:
+- Guest note page in both layouts (fake cookie forces the old Payload route): screenshots pixel-identical in light,
+  dark-system and dark-cookie modes. Guests keep Payload's theme rules (cookie, else light: Payload's ThemeProvider
+  does not follow the system theme for the unauthenticated client config).
+- Guest 404: same markup and look as Payload's NotFound view; now answers with HTTP 404 (was 200).
+- `/site/...` opened directly: 404 (the site pages need the proxy's `x-ink-site` header). `site` is a reserved slug.
+- Tests: `tests/e2e/site-routing.e2e.spec.ts` (new), `tests/int/siteRoute.int.spec.ts` (new; checks the proxy's static
+  list against `getReservedSlugs(config)`), full e2e 91/91 on a production server, int 95/95, `pnpm test:workerd`
+  90/90 on workerd (OpenNext: Node.js proxy support is marked experimental there; verified locally and on preview).
+- Known flaky, also on `main`: `admin.e2e` "list views" (Payload adds `?limit=10`), SQLITE_BUSY on login when the test
+  process and the server share the local SQLite file.

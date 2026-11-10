@@ -27,10 +27,11 @@ import { isAdminUser } from '@/collections/Users'
 import type { Note as NoteType, User } from '@/payload-types'
 import { getPayloadRouteKind } from '@/utilities/isPayloadRoute'
 import { Editor } from '@/views/editor'
+import { findNoteBySlug } from '@/views/note-data'
 import { getNoteHeaderData } from '@/views/note-header/header-data'
 import { NoteViewer } from '@/views/note-viewer'
 
-import { importMap } from '../importMap'
+import { importMap } from '../../importMap'
 
 type Args = {
   params: Promise<{
@@ -49,20 +50,7 @@ const getUser = cache(async (): Promise<User | null> => {
 })
 
 /** Note shown at `/<slug>` (shared by `generateMetadata` and the page). */
-const getNote = cache(async (slug: string): Promise<NoteType | null> => {
-  const payload = await getPayload({ config: configPromise })
-  const user = await getUser()
-  const { docs } = await payload.find({
-    collection: 'notes',
-    depth: 1,
-    limit: 1,
-    overrideAccess: false,
-    pagination: false,
-    user,
-    where: { slug: { equals: slug } },
-  })
-  return docs[0] ?? null
-})
+const getNote = cache(async (slug: string): Promise<NoteType | null> => findNoteBySlug(slug, await getUser()))
 
 const resolveRoute = async (props: Args) => {
   const [params, searchParams, config, user] = await Promise.all([

@@ -49,7 +49,7 @@ export const Notes: CollectionConfig = {
     }, {
         // Native Payload slug field (unique + indexed). Made once, from the note's first heading /
         // paragraph, max 60 characters (see ./note-slug.ts). The note is shown at `/<slug>`
-        // (src/app/[[...segments]]/page.tsx); slugs that are Payload admin routes get a `-note` suffix.
+        // (src/app/(payload)/[[...segments]]/page.tsx); slugs that are Payload admin routes get a `-note` suffix.
         name: "slug",
         type: "slug",
         useAsSlug: "note",

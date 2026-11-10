@@ -9,7 +9,7 @@ import config from '../../src/payload.config.js'
  * never touches a real account.
  */
 export const testUser: Pick<User, 'role' | 'username'> & { password: string } = {
-  // The Payload admin is admins-only (see src/app/[[...segments]]/page.tsx)
+  // The Payload admin is admins-only (see src/app/(payload)/[[...segments]]/page.tsx)
   role: 'admin',
   password: 'e2e-admin-pass-1234',
   username: `e2e-admin-${Date.now().toString(36)}`,

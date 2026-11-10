@@ -9,8 +9,8 @@ import {
 } from '@payloadcms/next/layouts'
 import React from 'react'
 
-import { importMap } from './importMap.js'
-import './custom.css'
+import { importMap } from '../importMap.js'
+import '../custom.css'
 
 export const generateViewport = generatePayloadViewport
 

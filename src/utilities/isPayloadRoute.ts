@@ -3,7 +3,7 @@ import type { SanitizedConfig } from 'payload'
 
 /*
  * The Payload admin lives at `/` (`routes.admin: '/'`), next to the website. This file decides, for a URL inside
- * `src/app/[[...segments]]`, whether Payload or the website renders it. Everything is read from the Payload config
+ * `src/app/(payload)/[[...segments]]`, whether Payload or the website renders it. Everything is read from the Payload config
  * (no hard-coded list), so new built-in routes, `admin.routes` overrides and custom views are picked up on their own.
  *
  * Payload 4.0.0-beta.7 admin routes (`@payloadcms/ui/dist/views/Root/getRouteData.js`):
@@ -46,8 +46,8 @@ const PUBLIC_ADMIN_ROUTE_KEYS = [
 /** Route prefixes Payload always renders (`/collections/...`, `/globals/...`). */
 const ADMIN_ROUTE_SEGMENTS = ['collections', 'globals'] as const
 
-/** Paths outside the Payload admin that a note slug must never use. */
-const NON_ADMIN_RESERVED_SEGMENTS = ['api', '_next'] as const
+/** Paths outside the Payload admin that a note slug must never use (`site`: the guest website, src/utilities/siteRoute.ts). */
+const NON_ADMIN_RESERVED_SEGMENTS = ['api', '_next', 'site'] as const
 
 const firstSegment = (path: string | undefined): string | undefined =>
   path?.split('/').filter(Boolean)[0]

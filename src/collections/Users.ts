@@ -32,7 +32,7 @@ export const Users: CollectionConfig = {
   /*
    * `access.admin` stays at Payload's default (any logged-in user): the website note editor (`/<noteSlug>`) uses
    * Payload server functions (form state) that require it. The Payload admin pages themselves are admins-only:
-   * src/app/[[...segments]]/page.tsx redirects a logged-in non-admin to `/`.
+   * src/app/(payload)/[[...segments]]/page.tsx redirects a logged-in non-admin to `/`.
    *
    * `create`: the first user is still created on /create-first-user (Payload skips access control there).
    */

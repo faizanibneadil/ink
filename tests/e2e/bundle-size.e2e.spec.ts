@@ -24,10 +24,12 @@ const KiB = 1024
 
 /** Max JS bytes over the wire (compressed) per page */
 const BUDGET_KIB: Record<string, number> = {
-  'admin dashboard': 1400,
-  'editor note page': 1400,
-  'guest note page': 1400,
-  landing: 1400,
+  // Baseline (docs/bundle/AUDIT.md): 873 KiB on every page
+  'admin dashboard': 920,
+  'editor note page': 940,
+  // Guests get the light website layout (src/app/(site)): 206 KiB
+  'guest note page': 240,
+  landing: 240,
 }
 
 test.skip(!process.env.BUNDLE_E2E, 'Needs a production server: set BUNDLE_E2E=1 (see the comment at the top)')

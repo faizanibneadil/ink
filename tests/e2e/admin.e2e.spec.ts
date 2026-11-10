@@ -5,7 +5,7 @@ import { deleteAccount, loginAs, seedAccount, type TestAccount } from '../helper
 import { cleanupTestUser, seedTestUser, testUser } from '../helpers/seedUser'
 
 /*
- * Payload admin (`routes.admin: '/'`, admins only, see src/app/[[...segments]]/page.tsx). Users log in with their
+ * Payload admin (`routes.admin: '/'`, admins only, see src/app/(payload)/[[...segments]]/page.tsx). Users log in with their
  * username (email login is off, src/collections/Users.ts).
  */
 
