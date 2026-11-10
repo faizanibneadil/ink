@@ -27,9 +27,9 @@ const BUDGET_KIB: Record<string, number> = {
   // Baseline (docs/bundle/AUDIT.md): 873 KiB on every page
   'admin dashboard': 920,
   'editor note page': 940,
-  // Guests get the light website layout (src/app/(site)): 206 KiB
-  'guest note page': 240,
-  landing: 240,
+  // Guests: light website layout (src/app/(site)) + server-rendered note view: 144 KiB
+  'guest note page': 170,
+  landing: 170,
 }
 
 test.skip(!process.env.BUNDLE_E2E, 'Needs a production server: set BUNDLE_E2E=1 (see the comment at the top)')
