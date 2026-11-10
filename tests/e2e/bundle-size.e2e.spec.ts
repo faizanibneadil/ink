@@ -25,8 +25,11 @@ const KiB = 1024
 /** Max JS bytes over the wire (compressed) per page */
 const BUDGET_KIB: Record<string, number> = {
   // Baseline (docs/bundle/AUDIT.md): 873 KiB on every page
-  'admin dashboard': 920,
+  'admin dashboard': 840,
+  // A note with a code block also loads the editable block + highlight.js (on demand): 889 KiB
   'editor note page': 940,
+  // Without a code block, highlight.js is not downloaded: 828 KiB
+  'editor note page (no code block)': 860,
   // Guests: light website layout (src/app/(site)) + server-rendered note view: 144 KiB
   'guest note page': 170,
   landing: 170,
@@ -39,6 +42,7 @@ const seed = createNoteSeeder()
 const member: TestAccount = { password: 'e2e-pass-1234', role: 'user', username: `e2e-bundle-${RUN}` }
 const admin: TestAccount = { password: 'e2e-pass-1234', role: 'admin', username: `e2e-bundle-admin-${RUN}` }
 let slug = ''
+let plainSlug = ''
 
 type Measure = { files: number; rawKiB: number; wireKiB: number }
 const results: Record<string, Measure> = {}
@@ -50,6 +54,7 @@ test.beforeAll(async () => {
     noteWithCodeBlock(`E2E bundle ${RUN}`, { code: 'const answer = 42\nconsole.log(answer)', language: 'ts' }),
   )
   slug = note.slug ?? ''
+  plainSlug = (await seed.note(`E2E bundle plain ${RUN}`)).slug ?? ''
 })
 
 test.afterAll(async () => {
@@ -124,6 +129,19 @@ test('editor note page', async ({ page }) => {
   check('editor note page', await measureJS(page, `${BASE}/${slug}`, async (p) => {
     await expect(p.locator('[data-lexical-editor="true"]')).toBeVisible({ timeout: 60000 })
   }))
+})
+
+test('editor note page without a code block: no highlight.js', async ({ page }) => {
+  await loginAs(page, member)
+  const scripts: string[] = []
+  page.on('response', async (response) => {
+    if (response.request().resourceType() === 'script') scripts.push(await response.text().catch(() => ''))
+  })
+  check('editor note page (no code block)', await measureJS(page, `${BASE}/${plainSlug}`, async (p) => {
+    await expect(p.locator('[data-lexical-editor="true"]')).toBeVisible({ timeout: 60000 })
+  }))
+  // highlight.js' TypeScript grammar keeps this keyword list in its minified output
+  expect(scripts.some((source) => source.includes('hljs') && source.includes('"satisfies"'))).toBe(false)
 })
 
 test('admin dashboard', async ({ page }) => {

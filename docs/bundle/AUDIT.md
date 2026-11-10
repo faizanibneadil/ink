@@ -150,3 +150,33 @@ identical DOM except the server's port, screenshots pixel-identical below the co
 `media/` folder, so its cover images did not load). New e2e: guest drawing renders as an SVG. Full e2e 92/92 (with
 the admin list-view test fixed: Payload may add `?limit=10` to list URLs, also on `main`), int 95/95,
 workerd 90/90.
+
+### T4 — C4: highlight.js only for notes with a code block (accepted)
+
+`src/features/code-block/notion/view.tsx` is in every Payload page's bundle (via `src/views/config.tsx` in the import
+map) and imported `CodeBlockView` → `highlight.ts` synchronously. Now it renders `CodeBlockFrame` with `plainLines`
+(no highlight.js) as the Suspense fallback; highlight.js only comes with the lazy `NotionCodeBlock` / `CodeBlockView`
+chunk. `CodeBlockView` = `CodeBlockFrame` + `highlightLines` (the guest view still highlights on the server).
+
+| Page | After T3 (wire / raw) | After T4 (wire / raw) |
+|------|----------------------:|----------------------:|
+| Editor, note without a code block | 884 KiB | **828 / 2595 KiB** |
+| Editor, note with a code block | 889 / 2790 KiB | 889 / 2791 KiB (highlight.js on demand) |
+| Admin dashboard | 869 / 2739 KiB | **812 / 2551 KiB** |
+| Guest pages | 144 KiB | 144 KiB |
+
+Build evidence (snapshot `audit-after-T4`), route `/[[...segments]]`: render-dependent 781 → 701 KiB;
+`highlight.js` (74 KiB) moved to async-only.
+
+Large-note profile (AGENTS.md rule), same method before/after: production server, a 516 KiB note (900 paragraphs),
+cold cache, 5 runs, median, time from navigation:
+
+| Note | Before: editor / coloured code / JS | After: editor / coloured code / JS |
+|------|------------------------------------:|-----------------------------------:|
+| No code block | 1280 ms / – / 884 KiB | 1251 ms / – / 828 KiB |
+| With a code block | 1284 ms / 1333 ms / 889 KiB | 1279 ms / 1283 ms / 889 KiB |
+
+The uncoloured fallback shows for a few ms (colours 4 ms after the editor is visible); `tests/int/code-block-lines`
+checks it has the same lines and text as the highlighted block, so nothing moves when colours arrive.
+Tests: e2e 93/93 incl. a new "editor without a code block downloads no highlight.js" check, int 103/103,
+workerd 90/90.
