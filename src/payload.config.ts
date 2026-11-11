@@ -1,7 +1,6 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { sqliteD1Adapter } from '@payloadcms/db-d1-sqlite'
 import { sqliteAdapter } from '@payloadcms/db-sqlite'
-import { mcpPlugin } from '@payloadcms/plugin-mcp'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { r2Storage } from '@payloadcms/storage-r2'
 import path from 'path'
@@ -15,6 +14,8 @@ import { Folders } from './collections/Folders'
 import { Tags } from './collections/Tags'
 import { Notes } from './collections/notes'
 import { Settings } from './globals/settings'
+import { mcp } from './mcp'
+import { createCloudflareLogger } from './utilities/cloudflareLogger'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -23,25 +24,7 @@ const dirname = path.dirname(filename)
 // where Payload uses local SQLite and stores uploads on disk.
 const cloudflare = await getCloudflareEnv()
 
-const createLog =
-  (level: string, fn: typeof console.log) => (objOrMsg: object | string, msg?: string) => {
-    if (typeof objOrMsg === 'string') {
-      fn(JSON.stringify({ level, msg: objOrMsg }))
-    } else {
-      fn(JSON.stringify({ level, ...objOrMsg, msg: msg ?? (objOrMsg as { msg?: string }).msg }))
-    }
-  }
-
-const cloudflareLogger = {
-  level: process.env.PAYLOAD_LOG_LEVEL || 'info',
-  trace: createLog('trace', console.debug),
-  debug: createLog('debug', console.debug),
-  info: createLog('info', console.log),
-  warn: createLog('warn', console.warn),
-  error: createLog('error', console.error),
-  fatal: createLog('fatal', console.error),
-  silent: () => { },
-} as any // eslint-disable-line @typescript-eslint/no-explicit-any -- PayloadLogger type isn't exported
+const cloudflareLogger = createCloudflareLogger() as any // eslint-disable-line @typescript-eslint/no-explicit-any -- PayloadLogger type isn't exported
 
 // Public URL of this deployment, used as Payload's `serverURL` and as the only allowed origin for
 // CORS and CSRF:
@@ -132,7 +115,8 @@ export default buildConfig({
     fallback: true,
     defaultLocale: 'en',
   },
-  plugins: [mcpPlugin({})],
+  // MCP server at /api/mcp: admins only, notes only (see src/mcp.ts)
+  plugins: [mcp],
 })
 
 /**
