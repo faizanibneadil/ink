@@ -36,6 +36,10 @@ const serverURL =
   process.env.SERVER_URL ||
   (cloudflare ? '' : 'http://localhost:3000')
 
+// The MCP plugin turns off the tools of every collection / global except notes, so it gets the same lists.
+const collections = [Users, Media, Folders, Tags, Notes]
+const globals = [Settings]
+
 export default buildConfig({
   serverURL,
   // Only this deployment's own URL may call the API from a browser (CORS) or use the Payload auth
@@ -66,8 +70,8 @@ export default buildConfig({
   auth: {
     passwordHashIterations: 100000,
   },
-  collections: [Users, Media, Folders, Tags, Notes],
-  globals: [Settings],
+  collections,
+  globals,
   editor: lexicalEditor({
     features: ({ defaultFeatures }) => {
       return [...defaultFeatures]
@@ -115,8 +119,8 @@ export default buildConfig({
     fallback: true,
     defaultLocale: 'en',
   },
-  // MCP server at /api/mcp: admins only, notes only (see src/mcp.ts)
-  plugins: [mcp],
+  // MCP server at /api/mcp with OAuth sign-in: admins only, notes only (see src/mcp.ts)
+  plugins: [...mcp({ collections, globals })],
 })
 
 /**
