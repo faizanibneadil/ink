@@ -332,7 +332,7 @@ describe('MCP server (/api/mcp)', () => {
         { apiKey: ADMIN_KEY },
       )
       expect(status).toBe(200)
-      expect(body.result.serverInfo.name).toBeTruthy()
+      expect(body.result.serverInfo).toMatchObject({ name: 'ink', title: 'Ink', websiteUrl: ORIGIN })
     })
 
     it('gives a non-admin user no notes tools (only getConfigInfo, which lists nothing)', async () => {

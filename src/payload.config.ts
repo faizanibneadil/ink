@@ -36,18 +36,6 @@ const serverURL =
   process.env.SERVER_URL ||
   (cloudflare ? '' : 'http://localhost:3000')
 
-const adminOnly = ({ req }: { req: { user?: unknown } }) => isAdminUser(req.user)
-const noTools = {
-  count: false,
-  create: false,
-  delete: false,
-  duplicate: false,
-  find: false,
-  findDistinct: false,
-  getCollectionSchema: false,
-  update: false,
-} as const
-
 export default buildConfig({
   serverURL,
   // Only this deployment's own URL may call the API from a browser (CORS) or use the Payload auth
@@ -134,28 +122,84 @@ export default buildConfig({
       collections: {
         notes: {
           tools: {
-            count: { access: adminOnly },
+            count: { access: ({ req }) => isAdminUser(req.user) },
             create: {
-              access: adminOnly,
+              access: ({ req }) => isAdminUser(req.user),
               // The app makes the slug from the note's first heading when it is empty (src/collections/note-slug.ts)
               description: 'Create notes. `note` is Lexical rich-text JSON. Send `slug: ""` to make the slug from the first heading.',
             },
             delete: false,
-            duplicate: { access: adminOnly },
-            find: { access: adminOnly },
-            findDistinct: { access: adminOnly },
-            getCollectionSchema: { access: adminOnly },
-            update: { access: adminOnly },
+            duplicate: { access: ({ req }) => isAdminUser(req.user) },
+            find: { access: ({ req }) => isAdminUser(req.user) },
+            findDistinct: { access: ({ req }) => isAdminUser(req.user) },
+            getCollectionSchema: { access: ({ req }) => isAdminUser(req.user) },
+            update: { access: ({ req }) => isAdminUser(req.user) },
           },
         },
         // Not available over MCP
-        folders: { tools: noTools },
-        media: { tools: { ...noTools, getUploadInstructions: false } },
-        tags: { tools: noTools },
-        users: { tools: noTools },
+        folders: {
+          tools: {
+            count: false,
+            create: false,
+            delete: false,
+            duplicate: false,
+            find: false,
+            findDistinct: false,
+            getCollectionSchema: false,
+            update: false,
+          },
+        },
+        media: {
+          tools: {
+            count: false,
+            create: false,
+            delete: false,
+            duplicate: false,
+            find: false,
+            findDistinct: false,
+            getCollectionSchema: false,
+            getUploadInstructions: false,
+            update: false,
+          },
+        },
+        tags: {
+          tools: {
+            count: false,
+            create: false,
+            delete: false,
+            duplicate: false,
+            find: false,
+            findDistinct: false,
+            getCollectionSchema: false,
+            update: false,
+          },
+        },
+        users: {
+          tools: {
+            count: false,
+            create: false,
+            delete: false,
+            duplicate: false,
+            find: false,
+            findDistinct: false,
+            getCollectionSchema: false,
+            update: false,
+          },
+        },
       },
       globals: {
         settings: { tools: { find: false, getGlobalSchema: false, update: false } },
+      },
+      mcp: {
+        serverOptions: {
+          serverInfo: {
+            name: 'ink',
+            title: 'Ink',
+            description: 'Ink notes: find, create and update lecture notes.',
+            version: '1.0.0',
+            websiteUrl: serverURL || undefined,
+          },
+        },
       },
     }),
   ],
