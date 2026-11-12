@@ -5,6 +5,8 @@ import * as migration_20261105_154605_payload_beta_7 from './20261105_154605_pay
 import * as migration_20261105_160042_relabel_clamped_password_hashes from './20261105_160042_relabel_clamped_password_hashes';
 import * as migration_20261105_190440_add_user_role from './20261105_190440_add_user_role';
 import * as migration_20261106_212540_add_note_cover_icon from './20261106_212540_add_note_cover_icon';
+import * as migration_20261111_094442_add_user_api_key from './20261111_094442_add_user_api_key';
+import * as migration_20261111_181656_payload_beta_8 from './20261111_181656_payload_beta_8';
 
 export const migrations = [
   {
@@ -41,5 +43,15 @@ export const migrations = [
     up: migration_20261106_212540_add_note_cover_icon.up,
     down: migration_20261106_212540_add_note_cover_icon.down,
     name: '20261106_212540_add_note_cover_icon',
+  },
+  {
+    up: migration_20261111_094442_add_user_api_key.up,
+    down: migration_20261111_094442_add_user_api_key.down,
+    name: '20261111_094442_add_user_api_key',
+  },
+  {
+    up: migration_20261111_181656_payload_beta_8.up,
+    down: migration_20261111_181656_payload_beta_8.down,
+    name: '20261111_181656_payload_beta_8'
   },
 ];

@@ -9,12 +9,13 @@ import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import type { GetPlatformProxyOptions } from 'wrangler'
 
-import { Users } from './collections/Users'
+import { isAdminUser, Users } from './collections/Users'
 import { Media } from './collections/Media'
 import { Folders } from './collections/Folders'
 import { Tags } from './collections/Tags'
 import { Notes } from './collections/notes'
 import { Settings } from './globals/settings'
+import { createCloudflareLogger } from './utilities/cloudflareLogger'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -23,25 +24,7 @@ const dirname = path.dirname(filename)
 // where Payload uses local SQLite and stores uploads on disk.
 const cloudflare = await getCloudflareEnv()
 
-const createLog =
-  (level: string, fn: typeof console.log) => (objOrMsg: object | string, msg?: string) => {
-    if (typeof objOrMsg === 'string') {
-      fn(JSON.stringify({ level, msg: objOrMsg }))
-    } else {
-      fn(JSON.stringify({ level, ...objOrMsg, msg: msg ?? (objOrMsg as { msg?: string }).msg }))
-    }
-  }
-
-const cloudflareLogger = {
-  level: process.env.PAYLOAD_LOG_LEVEL || 'info',
-  trace: createLog('trace', console.debug),
-  debug: createLog('debug', console.debug),
-  info: createLog('info', console.log),
-  warn: createLog('warn', console.warn),
-  error: createLog('error', console.error),
-  fatal: createLog('fatal', console.error),
-  silent: () => { },
-} as any // eslint-disable-line @typescript-eslint/no-explicit-any -- PayloadLogger type isn't exported
+const cloudflareLogger = createCloudflareLogger() as any // eslint-disable-line @typescript-eslint/no-explicit-any -- PayloadLogger type isn't exported
 
 // Public URL of this deployment, used as Payload's `serverURL` and as the only allowed origin for
 // CORS and CSRF:
@@ -132,7 +115,94 @@ export default buildConfig({
     fallback: true,
     defaultLocale: 'en',
   },
-  plugins: [mcpPlugin({})],
+  plugins: [
+    // MCP server at /api/mcp. Clients sign in with OAuth (log in to Ink, click Allow) or a user's API key
+    // (`Authorization: users API-Key <key>`). Only admins get tools, only for notes, without delete.
+    mcpPlugin({
+      collections: {
+        notes: {
+          tools: {
+            count: { access: ({ req }) => isAdminUser(req.user) },
+            create: {
+              access: ({ req }) => isAdminUser(req.user),
+              // The app makes the slug from the note's first heading when it is empty (src/collections/note-slug.ts)
+              description: 'Create notes. `note` is Lexical rich-text JSON. Send `slug: ""` to make the slug from the first heading.',
+            },
+            delete: false,
+            duplicate: { access: ({ req }) => isAdminUser(req.user) },
+            find: { access: ({ req }) => isAdminUser(req.user) },
+            findDistinct: { access: ({ req }) => isAdminUser(req.user) },
+            getCollectionSchema: { access: ({ req }) => isAdminUser(req.user) },
+            update: { access: ({ req }) => isAdminUser(req.user) },
+          },
+        },
+        // Not available over MCP
+        folders: {
+          tools: {
+            count: false,
+            create: false,
+            delete: false,
+            duplicate: false,
+            find: false,
+            findDistinct: false,
+            getCollectionSchema: false,
+            update: false,
+          },
+        },
+        media: {
+          tools: {
+            count: false,
+            create: false,
+            delete: false,
+            duplicate: false,
+            find: false,
+            findDistinct: false,
+            getCollectionSchema: false,
+            getUploadInstructions: false,
+            update: false,
+          },
+        },
+        tags: {
+          tools: {
+            count: false,
+            create: false,
+            delete: false,
+            duplicate: false,
+            find: false,
+            findDistinct: false,
+            getCollectionSchema: false,
+            update: false,
+          },
+        },
+        users: {
+          tools: {
+            count: false,
+            create: false,
+            delete: false,
+            duplicate: false,
+            find: false,
+            findDistinct: false,
+            getCollectionSchema: false,
+            update: false,
+          },
+        },
+      },
+      globals: {
+        settings: { tools: { find: false, getGlobalSchema: false, update: false } },
+      },
+      mcp: {
+        serverOptions: {
+          serverInfo: {
+            name: 'ink',
+            title: 'Ink',
+            description: 'Ink notes: find, create and update lecture notes.',
+            version: '1.0.0',
+            websiteUrl: serverURL || undefined,
+          },
+        },
+      },
+    }),
+  ],
 })
 
 /**

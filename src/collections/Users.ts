@@ -58,6 +58,9 @@ export const Users: CollectionConfig = {
     ],
   },
   auth: {
+    // Per-user API keys ("Enable API Key" on the user's page). MCP clients authenticate to `/api/mcp` with the header
+    // `Authorization: users API-Key <key>` (see src/mcp.ts). An API key acts as that user, with that user's role.
+    useAPIKey: true,
     loginWithUsername: {
       allowEmailLogin: false,
       requireEmail: false,
