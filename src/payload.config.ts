@@ -1,6 +1,7 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { sqliteD1Adapter } from '@payloadcms/db-d1-sqlite'
 import { sqliteAdapter } from '@payloadcms/db-sqlite'
+import { mcpPlugin } from '@payloadcms/plugin-mcp'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { r2Storage } from '@payloadcms/storage-r2'
 import path from 'path'
@@ -8,13 +9,12 @@ import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import type { GetPlatformProxyOptions } from 'wrangler'
 
-import { Users } from './collections/Users'
+import { isAdminUser, Users } from './collections/Users'
 import { Media } from './collections/Media'
 import { Folders } from './collections/Folders'
 import { Tags } from './collections/Tags'
 import { Notes } from './collections/notes'
 import { Settings } from './globals/settings'
-import { mcp } from './mcp'
 import { createCloudflareLogger } from './utilities/cloudflareLogger'
 
 const filename = fileURLToPath(import.meta.url)
@@ -36,9 +36,17 @@ const serverURL =
   process.env.SERVER_URL ||
   (cloudflare ? '' : 'http://localhost:3000')
 
-// The MCP plugin turns off the tools of every collection / global except notes, so it gets the same lists.
-const collections = [Users, Media, Folders, Tags, Notes]
-const globals = [Settings]
+const adminOnly = ({ req }: { req: { user?: unknown } }) => isAdminUser(req.user)
+const noTools = {
+  count: false,
+  create: false,
+  delete: false,
+  duplicate: false,
+  find: false,
+  findDistinct: false,
+  getCollectionSchema: false,
+  update: false,
+} as const
 
 export default buildConfig({
   serverURL,
@@ -70,8 +78,8 @@ export default buildConfig({
   auth: {
     passwordHashIterations: 100000,
   },
-  collections,
-  globals,
+  collections: [Users, Media, Folders, Tags, Notes],
+  globals: [Settings],
   editor: lexicalEditor({
     features: ({ defaultFeatures }) => {
       return [...defaultFeatures]
@@ -119,8 +127,38 @@ export default buildConfig({
     fallback: true,
     defaultLocale: 'en',
   },
-  // MCP server at /api/mcp with OAuth sign-in: admins only, notes only (see src/mcp.ts)
-  plugins: [...mcp({ collections, globals })],
+  plugins: [
+    // MCP server at /api/mcp. Clients sign in with OAuth (log in to Ink, click Allow) or a user's API key
+    // (`Authorization: users API-Key <key>`). Only admins get tools, only for notes, without delete.
+    mcpPlugin({
+      collections: {
+        notes: {
+          tools: {
+            count: { access: adminOnly },
+            create: {
+              access: adminOnly,
+              // The app makes the slug from the note's first heading when it is empty (src/collections/note-slug.ts)
+              description: 'Create notes. `note` is Lexical rich-text JSON. Send `slug: ""` to make the slug from the first heading.',
+            },
+            delete: false,
+            duplicate: { access: adminOnly },
+            find: { access: adminOnly },
+            findDistinct: { access: adminOnly },
+            getCollectionSchema: { access: adminOnly },
+            update: { access: adminOnly },
+          },
+        },
+        // Not available over MCP
+        folders: { tools: noTools },
+        media: { tools: { ...noTools, getUploadInstructions: false } },
+        tags: { tools: noTools },
+        users: { tools: noTools },
+      },
+      globals: {
+        settings: { tools: { find: false, getGlobalSchema: false, update: false } },
+      },
+    }),
+  ],
 })
 
 /**
