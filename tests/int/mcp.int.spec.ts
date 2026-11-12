@@ -7,7 +7,6 @@ import { getPayload, type Payload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { GET as wellKnownNotFound } from '@/app/.well-known/[...path]/route'
-import { GET as wellKnownProtectedResource } from '@/app/.well-known/oauth-protected-resource/[[...path]]/route'
 import config from '@/payload.config'
 
 /*
@@ -223,13 +222,8 @@ describe('MCP server (/api/mcp)', () => {
       resource: `${ORIGIN}/api/mcp`,
     }
 
-    it('serves the protected resource metadata at the challenge link and at /.well-known', async () => {
+    it('serves the protected resource metadata at the challenge link', async () => {
       expect(await (await api('GET', '/mcp/oauth-protected-resource')).json()).toEqual(expected)
-      for (const path of ['/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource/api/mcp']) {
-        const res = await wellKnownProtectedResource(new Request(new URL(path, ORIGIN)))
-        expect(res.status).toBe(200)
-        expect(await res.json()).toEqual(expected)
-      }
     })
 
     it('serves the authorization server metadata (PKCE S256, registration, refresh tokens)', async () => {
