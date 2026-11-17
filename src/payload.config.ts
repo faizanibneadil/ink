@@ -59,7 +59,13 @@ export default buildConfig({
       graphics: {
         Logo: "@/graphics/logo/logo.tsx#Logo",
         Icon: "@/graphics/icon/icon.tsx#Icon"
-      }
+      },
+      views: {
+        render: {
+          Component: "@/views/render/render.tsx#RenderView",
+          path: "/render",
+        },
+      },
     }
   },
   // Cloudflare Workers' node:crypto caps PBKDF2 at 100,000 iterations (Payload default is 600,000).
